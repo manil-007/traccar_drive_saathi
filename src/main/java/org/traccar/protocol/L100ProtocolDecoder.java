@@ -179,7 +179,7 @@ public class L100ProtocolDecoder extends BaseProtocolDecoder {
 
         position.set(Position.KEY_STATUS, parser.next());
         position.set(Position.PREFIX_ADC + 1, parser.next());
-        position.set(Position.KEY_ODOMETER, parser.nextDouble()*1000);
+        position.set(Position.KEY_ODOMETER, parser.nextDouble() * 1000);
         position.set(Position.PREFIX_TEMP + 1, parser.nextDouble());
         position.set(Position.KEY_BATTERY, parser.nextDouble());
 
