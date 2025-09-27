@@ -1,15 +1,23 @@
 package org.traccar.api.resource;
 
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.*;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Context;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.annotation.security.PermitAll;
-import java.net.*;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-
+import java.net.URI;
+import java.net.URL;
+import java.net.HttpURLConnection;
+import java.net.URLEncoder;
+import java.util.UUID;
+import java.util.LinkedList;
 @Path("/generateAccessToken")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -17,32 +25,72 @@ public class GenerateAccessTokenResource {
 
     // Token info with expiration
     private static class TokenInfo {
-        String cookie;
-        long expiresAt;
+        private String cookie;
+        private long expiresAt;
 
         TokenInfo(String cookie, long expiresAt) {
             this.cookie = cookie;
             this.expiresAt = expiresAt;
         }
+
+        public String getCookie() {
+            return cookie;
+        }
+
+        public long getExpiresAt() {
+            return expiresAt;
+        }
     }
 
     // In-memory token to cookie map (for demo; use persistent store for production)
-    private static final ConcurrentHashMap<String, TokenInfo> tokenCookieMap = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, TokenInfo> TOKEN_COOKIE_MAP = new ConcurrentHashMap<>();
     private static final long TOKEN_TTL_MS = TimeUnit.DAYS.toMillis(30); // 30 day token validity
 
     // Rate limiting: Map<IP, List<timestamp>>
-    private static final ConcurrentHashMap<String, LinkedList<Long>> loginAttempts = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, LinkedList<Long>> LOGIN_ATTEMPTS = new ConcurrentHashMap<>();
     private static final int MAX_ATTEMPTS = 5;
     private static final long WINDOW_MS = TimeUnit.MINUTES.toMillis(1);
 
     public static class AuthRequest {
-        public String username;
-        public String password;
+        private String username;
+        private String password;
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
     }
 
     public static class AuthResponse {
-        public String token;
-        public long expiresAt;
+        private String token;
+        private long expiresAt;
+
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
+            this.token = token;
+        }
+
+        public long getExpiresAt() {
+            return expiresAt;
+        }
+
+        public void setExpiresAt(long expiresAt) {
+            this.expiresAt = expiresAt;
+        }
     }
 
     @PermitAll
@@ -51,8 +99,8 @@ public class GenerateAccessTokenResource {
         // Rate limiting by IP
         String ip = req.getRemoteAddr();
         long now = System.currentTimeMillis();
-        loginAttempts.putIfAbsent(ip, new LinkedList<>());
-        LinkedList<Long> attempts = loginAttempts.get(ip);
+        LOGIN_ATTEMPTS.putIfAbsent(ip, new LinkedList<>());
+        LinkedList<Long> attempts = LOGIN_ATTEMPTS.get(ip);
         synchronized (attempts) {
             // Remove old attempts
             while (!attempts.isEmpty() && now - attempts.peekFirst() > WINDOW_MS) {
@@ -77,8 +125,8 @@ public class GenerateAccessTokenResource {
         }
 
         // Call Traccar login API (avoid deprecated URL(String) constructor)
-        URI uri = new URI("https://drivesathi.tnvconsult.com/api/session");
-        // URI uri = new URI("http://localhost:8082/api/session");
+        // URI uri = new URI("https://drivesathi.tnvconsult.com/api/session");
+        URI uri = new URI("http://localhost:8082/api/session");
         URL url = uri.toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
@@ -114,7 +162,7 @@ public class GenerateAccessTokenResource {
         // Generate token and store mapping with expiration
         String token = UUID.randomUUID().toString();
         long expiresAt = now + TOKEN_TTL_MS;
-        tokenCookieMap.put(token, new TokenInfo(cookie, expiresAt));
+        TOKEN_COOKIE_MAP.put(token, new TokenInfo(cookie, expiresAt));
 
         AuthResponse resp = new AuthResponse();
         resp.token = token;
@@ -124,13 +172,15 @@ public class GenerateAccessTokenResource {
 
     // Utility for other resources to get cookie by token, with expiration check
     public static String getCookieForToken(String token) {
-        TokenInfo info = tokenCookieMap.get(token);
-        if (info == null)
+        TokenInfo info = TOKEN_COOKIE_MAP.get(token);
+        if (info == null) {
             return null;
-        if (System.currentTimeMillis() > info.expiresAt) {
-            tokenCookieMap.remove(token);
+        }
+        if (System.currentTimeMillis() > info.getExpiresAt()) {
+            TOKEN_COOKIE_MAP.remove(token);
             return null;
         }
         return info.cookie;
     }
 }
+

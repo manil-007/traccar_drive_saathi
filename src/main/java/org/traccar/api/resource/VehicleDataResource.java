@@ -2,144 +2,554 @@ package org.traccar.api.resource;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-// import org.traccar.Context;
-// import org.traccar.BasePipelineFactory;
 import org.traccar.model.Device;
 import org.traccar.model.Position;
-// import org.traccar.storage.QueryBuilder;
 import org.traccar.storage.Storage;
-
-/*changes start*/
 import org.traccar.storage.query.Condition;
 import org.traccar.storage.query.Request;
 
-import jakarta.ws.rs.*;
-
-import jakarta.annotation.security.PermitAll;
-import jakarta.inject.Inject;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.*;
+import jakarta.annotation.security.PermitAll;
+import jakarta.inject.Inject;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Path("/vehicleData")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class VehicleDataResource {
-        /* changes start */
 
         @Inject
         private Storage storage;
-        /* changes end */
 
         public static class VehicleDataRequest {
-                public String company_names;
-                public String vehicle_nos;
-                public String imei_nos;
+                @JsonProperty("company_names")
+                private String companyNames;
+                @JsonProperty("vehicle_nos")
+                private String vehicleNos;
+                @JsonProperty("imei_nos")
+                private String imeiNos;
+
+                public String getCompanyNames() {
+                        return companyNames;
+                }
+
+                public void setCompanyNames(String companyNames) {
+                        this.companyNames = companyNames;
+                }
+
+                public String getVehicleNos() {
+                        return vehicleNos;
+                }
+
+                public void setVehicleNos(String vehicleNos) {
+                        this.vehicleNos = vehicleNos;
+                }
+
+                public String getImeiNos() {
+                        return imeiNos;
+                }
+
+                public void setImeiNos(String imeiNos) {
+                        this.imeiNos = imeiNos;
+                }
         }
 
         public static class VehicleDataResponse {
-                public Root root = new Root();
+                private Root root = new Root();
+
+                public Root getRoot() {
+                        return root;
+                }
+
+                public void setRoot(Root root) {
+                        this.root = root;
+                }
 
                 public static class Root {
                         @JsonProperty("VehicleData")
-                        public List<VehicleData> vehicleData = new ArrayList<>();
+                        private List<VehicleData> vehicleData = new ArrayList<>();
+
+                        public List<VehicleData> getVehicleData() {
+                                return vehicleData;
+                        }
+
+                        public void setVehicleData(List<VehicleData> vehicleData) {
+                                this.vehicleData = vehicleData;
+                        }
                 }
 
                 public static class VehicleData {
                         @JsonProperty("Vehicle_Name")
-                        public String vehicleName = "";
+                        private String vehicleName = "";
                         @JsonProperty("Company")
-                        public String company = "";
+                        private String company = "";
                         @JsonProperty("Temperature")
-                        public String temperature = "";
+                        private String temperature = "";
                         @JsonProperty("heartbeat")
-                        public String heartbeat = "";
+                        private String heartbeat = "";
                         @JsonProperty("Latitude")
-                        public String latitude = "";
+                        private String latitude = "";
                         @JsonProperty("GPS")
-                        public String gps = "";
+                        private String gps = "";
                         @JsonProperty("mcc")
-                        public String mcc = "";
+                        private String mcc = "";
                         @JsonProperty("cellid")
-                        public String cellid = "";
+                        private String cellid = "";
                         @JsonProperty("lac")
-                        public String lac = "";
+                        private String lac = "";
                         @JsonProperty("Vehicle_No")
-                        public String vehicleNo = "";
+                        private String vehicleNo = "";
                         @JsonProperty("Door1")
-                        public String door1 = "";
+                        private String door1 = "";
                         @JsonProperty("elock")
-                        public String elock = "";
+                        private String elock = "";
                         @JsonProperty("Door4")
-                        public String door4 = "";
+                        private String door4 = "";
                         @JsonProperty("Branch")
-                        public String branch = "";
+                        private String branch = "";
                         @JsonProperty("Vehicletype")
-                        public String vehicleType = "";
+                        private String vehicleType = "";
                         @JsonProperty("Door2")
-                        public String door2 = "";
+                        private String door2 = "";
                         @JsonProperty("Door3")
-                        public String door3 = "";
+                        private String door3 = "";
                         @JsonProperty("course")
-                        public String course = "";
+                        private String course = "";
                         @JsonProperty("GPSActualTime")
-                        public String gpsActualTime = "";
+                        private String gpsActualTime = "";
                         @JsonProperty("Datetime")
-                        public String datetime = "";
+                        private String datetime = "";
                         @JsonProperty("Status")
-                        public String status = "";
+                        private String status = "";
                         @JsonProperty("DeviceModel")
-                        public String deviceModel = "";
+                        private String deviceModel = "";
                         @JsonProperty("Speed")
-                        public String speed = "";
+                        private String speed = "";
                         @JsonProperty("AC")
-                        public String ac = "";
+                        private String ac = "";
                         @JsonProperty("mnc")
-                        public String mnc = "";
+                        private String mnc = "";
                         @JsonProperty("Imeino")
-                        public String imeino = "";
+                        private String imeino = "";
                         @JsonProperty("gps_hdop")
-                        public String gpsHdop = "";
+                        private String gpsHdop = "";
                         @JsonProperty("Odometer")
-                        public String odometer = "";
+                        private String odometer = "";
                         @JsonProperty("POI")
-                        public String poi = "";
+                        private String poi = "";
                         @JsonProperty("Driver_Middle_Name")
-                        public String driverMiddleName = "";
+                        private String driverMiddleName = "";
                         @JsonProperty("Longitude")
-                        public String longitude = "";
+                        private String longitude = "";
                         @JsonProperty("Immobilize_State")
-                        public String immobilizeState = "";
+                        private String immobilizeState = "";
                         @JsonProperty("IGN")
-                        public String ign = "";
+                        private String ign = "";
                         @JsonProperty("satellite_count")
-                        public Integer satelliteCount=0;
+                        private Integer satelliteCount = 0;
                         @JsonProperty("Driver_First_Name")
-                        public String driverFirstName = "";
+                        private String driverFirstName = "";
                         @JsonProperty("Angle")
-                        public String angle = "";
+                        private String angle = "";
                         @JsonProperty("Ibutton/RFID")
-                        public String ibuttonRfid = "";
+                        private String ibuttonRfid = "";
                         @JsonProperty("SOS")
-                        public String sos = "";
+                        private String sos = "";
                         @JsonProperty("Fuel")
-                        public List<String> fuel=new ArrayList<>();
+                        private List<String> fuel = new ArrayList<>();
                         @JsonProperty("battery_percentage")
-                        public Integer batteryPercentage=0;
+                        private Integer batteryPercentage = 0;
                         @JsonProperty("ExternalVolt")
-                        public String externalVolt = "";
+                        private String externalVolt = "";
                         @JsonProperty("Driver_Last_Name")
-                        public String driverLastName = "";
+                        private String driverLastName = "";
                         @JsonProperty("Power")
-                        public String power = "";
+                        private String power = "";
                         @JsonProperty("username")
-                        public String username = "";
+                        private String username = "";
                         @JsonProperty("Location")
-                        public String location = "";
+                        private String location = "";
                         @JsonProperty("Altitude")
-                        public String altitude = "";
+                        private String altitude = "";
+
+                        // Getters and setters for all fields
+                        public String getVehicleName() {
+                                return vehicleName;
+                        }
+
+                        public void setVehicleName(String vehicleName) {
+                                this.vehicleName = vehicleName;
+                        }
+
+                        public String getCompany() {
+                                return company;
+                        }
+
+                        public void setCompany(String company) {
+                                this.company = company;
+                        }
+
+                        public String getTemperature() {
+                                return temperature;
+                        }
+
+                        public void setTemperature(String temperature) {
+                                this.temperature = temperature;
+                        }
+
+                        public String getHeartbeat() {
+                                return heartbeat;
+                        }
+
+                        public void setHeartbeat(String heartbeat) {
+                                this.heartbeat = heartbeat;
+                        }
+
+                        public String getLatitude() {
+                                return latitude;
+                        }
+
+                        public void setLatitude(String latitude) {
+                                this.latitude = latitude;
+                        }
+
+                        public String getGps() {
+                                return gps;
+                        }
+
+                        public void setGps(String gps) {
+                                this.gps = gps;
+                        }
+
+                        public String getMcc() {
+                                return mcc;
+                        }
+
+                        public void setMcc(String mcc) {
+                                this.mcc = mcc;
+                        }
+
+                        public String getCellid() {
+                                return cellid;
+                        }
+
+                        public void setCellid(String cellid) {
+                                this.cellid = cellid;
+                        }
+
+                        public String getLac() {
+                                return lac;
+                        }
+
+                        public void setLac(String lac) {
+                                this.lac = lac;
+                        }
+
+                        public String getVehicleNo() {
+                                return vehicleNo;
+                        }
+
+                        public void setVehicleNo(String vehicleNo) {
+                                this.vehicleNo = vehicleNo;
+                        }
+
+                        public String getDoor1() {
+                                return door1;
+                        }
+
+                        public void setDoor1(String door1) {
+                                this.door1 = door1;
+                        }
+
+                        public String getElock() {
+                                return elock;
+                        }
+
+                        public void setElock(String elock) {
+                                this.elock = elock;
+                        }
+
+                        public String getDoor4() {
+                                return door4;
+                        }
+
+                        public void setDoor4(String door4) {
+                                this.door4 = door4;
+                        }
+
+                        public String getBranch() {
+                                return branch;
+                        }
+
+                        public void setBranch(String branch) {
+                                this.branch = branch;
+                        }
+
+                        public String getVehicleType() {
+                                return vehicleType;
+                        }
+
+                        public void setVehicleType(String vehicleType) {
+                                this.vehicleType = vehicleType;
+                        }
+
+                        public String getDoor2() {
+                                return door2;
+                        }
+
+                        public void setDoor2(String door2) {
+                                this.door2 = door2;
+                        }
+
+                        public String getDoor3() {
+                                return door3;
+                        }
+
+                        public void setDoor3(String door3) {
+                                this.door3 = door3;
+                        }
+
+                        public String getCourse() {
+                                return course;
+                        }
+
+                        public void setCourse(String course) {
+                                this.course = course;
+                        }
+
+                        public String getGpsActualTime() {
+                                return gpsActualTime;
+                        }
+
+                        public void setGpsActualTime(String gpsActualTime) {
+                                this.gpsActualTime = gpsActualTime;
+                        }
+
+                        public String getDatetime() {
+                                return datetime;
+                        }
+
+                        public void setDatetime(String datetime) {
+                                this.datetime = datetime;
+                        }
+
+                        public String getStatus() {
+                                return status;
+                        }
+
+                        public void setStatus(String status) {
+                                this.status = status;
+                        }
+
+                        public String getDeviceModel() {
+                                return deviceModel;
+                        }
+
+                        public void setDeviceModel(String deviceModel) {
+                                this.deviceModel = deviceModel;
+                        }
+
+                        public String getSpeed() {
+                                return speed;
+                        }
+
+                        public void setSpeed(String speed) {
+                                this.speed = speed;
+                        }
+
+                        public String getAc() {
+                                return ac;
+                        }
+
+                        public void setAc(String ac) {
+                                this.ac = ac;
+                        }
+
+                        public String getMnc() {
+                                return mnc;
+                        }
+
+                        public void setMnc(String mnc) {
+                                this.mnc = mnc;
+                        }
+
+                        public String getImeino() {
+                                return imeino;
+                        }
+
+                        public void setImeino(String imeino) {
+                                this.imeino = imeino;
+                        }
+
+                        public String getGpsHdop() {
+                                return gpsHdop;
+                        }
+
+                        public void setGpsHdop(String gpsHdop) {
+                                this.gpsHdop = gpsHdop;
+                        }
+
+                        public String getOdometer() {
+                                return odometer;
+                        }
+
+                        public void setOdometer(String odometer) {
+                                this.odometer = odometer;
+                        }
+
+                        public String getPoi() {
+                                return poi;
+                        }
+
+                        public void setPoi(String poi) {
+                                this.poi = poi;
+                        }
+
+                        public String getDriverMiddleName() {
+                                return driverMiddleName;
+                        }
+
+                        public void setDriverMiddleName(String driverMiddleName) {
+                                this.driverMiddleName = driverMiddleName;
+                        }
+
+                        public String getLongitude() {
+                                return longitude;
+                        }
+
+                        public void setLongitude(String longitude) {
+                                this.longitude = longitude;
+                        }
+
+                        public String getImmobilizeState() {
+                                return immobilizeState;
+                        }
+
+                        public void setImmobilizeState(String immobilizeState) {
+                                this.immobilizeState = immobilizeState;
+                        }
+
+                        public String getIgn() {
+                                return ign;
+                        }
+
+                        public void setIgn(String ign) {
+                                this.ign = ign;
+                        }
+
+                        public Integer getSatelliteCount() {
+                                return satelliteCount;
+                        }
+
+                        public void setSatelliteCount(Integer satelliteCount) {
+                                this.satelliteCount = satelliteCount;
+                        }
+
+                        public String getDriverFirstName() {
+                                return driverFirstName;
+                        }
+
+                        public void setDriverFirstName(String driverFirstName) {
+                                this.driverFirstName = driverFirstName;
+                        }
+
+                        public String getAngle() {
+                                return angle;
+                        }
+
+                        public void setAngle(String angle) {
+                                this.angle = angle;
+                        }
+
+                        public String getIbuttonRfid() {
+                                return ibuttonRfid;
+                        }
+
+                        public void setIbuttonRfid(String ibuttonRfid) {
+                                this.ibuttonRfid = ibuttonRfid;
+                        }
+
+                        public String getSos() {
+                                return sos;
+                        }
+
+                        public void setSos(String sos) {
+                                this.sos = sos;
+                        }
+
+                        public List<String> getFuel() {
+                                return fuel;
+                        }
+
+                        public void setFuel(List<String> fuel) {
+                                this.fuel = fuel;
+                        }
+
+                        public Integer getBatteryPercentage() {
+                                return batteryPercentage;
+                        }
+
+                        public void setBatteryPercentage(Integer batteryPercentage) {
+                                this.batteryPercentage = batteryPercentage;
+                        }
+
+                        public String getExternalVolt() {
+                                return externalVolt;
+                        }
+
+                        public void setExternalVolt(String externalVolt) {
+                                this.externalVolt = externalVolt;
+                        }
+
+                        public String getDriverLastName() {
+                                return driverLastName;
+                        }
+
+                        public void setDriverLastName(String driverLastName) {
+                                this.driverLastName = driverLastName;
+                        }
+
+                        public String getPower() {
+                                return power;
+                        }
+
+                        public void setPower(String power) {
+                                this.power = power;
+                        }
+
+                        public String getUsername() {
+                                return username;
+                        }
+
+                        public void setUsername(String username) {
+                                this.username = username;
+                        }
+
+                        public String getLocation() {
+                                return location;
+                        }
+
+                        public void setLocation(String location) {
+                                this.location = location;
+                        }
+
+                        public String getAltitude() {
+                                return altitude;
+                        }
+
+                        public void setAltitude(String altitude) {
+                                this.altitude = altitude;
+                        }
                 }
         }
 
@@ -159,32 +569,28 @@ public class VehicleDataResource {
                         return Response.status(Response.Status.UNAUTHORIZED).entity("Invalid or expired token.")
                                         .build();
                 }
-                // Storage storage = Context.getStorage();
                 VehicleDataResponse response = new VehicleDataResponse();
 
                 Set<String> imeiSet = new HashSet<>();
                 Set<String> vehicleNoSet = new HashSet<>();
-                boolean filterByCompany = request.company_names != null && !request.company_names.isEmpty();
-                boolean filterByImei = request.imei_nos != null && !request.imei_nos.isEmpty();
-                boolean filterByVehicleNo = request.vehicle_nos != null && !request.vehicle_nos.isEmpty();
+                boolean filterByCompany = request.getCompanyNames() != null && !request.getCompanyNames().isEmpty();
+                boolean filterByImei = request.getImeiNos() != null && !request.getImeiNos().isEmpty();
+                boolean filterByVehicleNo = request.getVehicleNos() != null && !request.getVehicleNos().isEmpty();
 
                 if (filterByImei) {
-                        for (String imei : request.imei_nos.split(",")) {
+                        for (String imei : request.getImeiNos().split(",")) {
                                 imeiSet.add(imei.trim());
                         }
                 }
                 if (filterByVehicleNo) {
-                        for (String vno : request.vehicle_nos.split(",")) {
+                        for (String vno : request.getVehicleNos().split(",")) {
                                 vehicleNoSet.add(vno.trim());
                         }
                 }
-                // Collection<Device> devices = storage.getObjects(Device.class, new
-                // Request((Condition) null));
                 List<Device> devices = storage.getObjects(Device.class,
                                 new Request(new org.traccar.storage.query.Columns.All()));
 
                 for (Device device : devices) {
-                        /* revisit */
                         boolean matches = false;
                         String vehicleNo = device.getAttributes() != null
                                         && device.getAttributes().get("vehicleNo") != null
@@ -196,7 +602,7 @@ public class VehicleDataResource {
                                                 && device.getAttributes().get("company") != null
                                                                 ? device.getAttributes().get("company").toString()
                                                                 : null;
-                                if (request.company_names.equalsIgnoreCase(company)) {
+                                if (request.getCompanyNames().equalsIgnoreCase(company)) {
                                         matches = true;
                                 }
                         } else if (filterByImei || filterByVehicleNo) {
@@ -208,190 +614,217 @@ public class VehicleDataResource {
                                 if (filterByVehicleNo && vehicleNo != null && vehicleNoSet.contains(vehicleNo)) {
                                         matches = true;
                                 }
-                                // if (filterByVehicleNo && vehicleNo != null) {
-                                // // Case-insensitive check for vehicleNo
-                                // for (String vno : vehicleNoSet) {
-                                // if (vehicleNo.equalsIgnoreCase(vno)) {
-                                // matches = true;
-                                // break;
-                                // }
-                                // }
-                                // }
                         } else if (!filterByCompany && !filterByImei && !filterByVehicleNo) {
                                 // If no filters are provided, include all devices
                                 matches = true;
                         }
 
-                        if (!matches)
+                        if (!matches) {
                                 continue;
+                        }
 
-                        /* revisit end */
-                        Position position = null; // revisit
+                        Position position = null;
                         if (device.getPositionId() != 0) {
                                 Condition posCond = new Condition.Equals("id", device.getPositionId());
-                                Request posReq = new Request(new org.traccar.storage.query.Columns.All(),posCond);
+                                Request posReq = new Request(new org.traccar.storage.query.Columns.All(), posCond);
                                 position = storage.getObject(Position.class, posReq);
                         }
                         VehicleDataResponse.VehicleData vehicle = new VehicleDataResponse.VehicleData();
-                        vehicle.vehicleName = device.getName();
-                        vehicle.company = device.getAttributes() != null && device.getAttributes().get("Company") != null
-                                                ? device.getAttributes().get("Company").toString()
-                                                : "--"; // revisit
+                        vehicle.setVehicleName(device.getName());
+                        vehicle.setCompany(device.getAttributes() != null
+                                        && device.getAttributes().get("Company") != null
+                                                        ? device.getAttributes().get("Company").toString()
+                                                        : "--");
 
-                        vehicle.vehicleNo = device.getAttributes() != null && device.getAttributes().get("vehicleNo") != null ? device.getAttributes().get("vehicleNo").toString() : "";
+                        vehicle.setVehicleNo(device.getAttributes() != null
+                                        && device.getAttributes().get("vehicleNo") != null
+                                                        ? device.getAttributes().get("vehicleNo").toString()
+                                                        : "");
 
-                        vehicle.imeino = device.getUniqueId();
+                        vehicle.setImeino(device.getUniqueId());
 
-                        vehicle.deviceModel = device.getModel() != null ? device.getModel() : "";
+                        vehicle.setDeviceModel(device.getModel() != null ? device.getModel() : "");
 
-                        vehicle.status = device.getStatus() != null ? device.getStatus() : "";
+                        vehicle.setStatus(device.getStatus() != null ? device.getStatus() : "");
 
-                        vehicle.username = device.getAttributes() != null && device.getAttributes().get("username") != null
-                                                ? device.getAttributes().get("username").toString()
-                                                : "";
+                        vehicle.setUsername(device.getAttributes() != null
+                                        && device.getAttributes().get("username") != null
+                                                        ? device.getAttributes().get("username").toString()
+                                                        : "");
 
-                        vehicle.datetime = device.getLastUpdate() != null ? new java.text.SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(device.getLastUpdate()) : "";
+                        vehicle.setDatetime(device.getLastUpdate() != null
+                                        ? new java.text.SimpleDateFormat("dd-MM-yyyy HH:mm:ss")
+                                                        .format(device.getLastUpdate())
+                                        : "");
 
                         // Position-based fields
                         if (position != null) {
-                                vehicle.latitude = String.valueOf(position.getLatitude());
-                                vehicle.longitude = String.valueOf(position.getLongitude());
-                                vehicle.speed = position.getSpeed() <= 0.01
+                                vehicle.setLatitude(String.valueOf(position.getLatitude()));
+                                vehicle.setLongitude(String.valueOf(position.getLongitude()));
+                                vehicle.setSpeed(position.getSpeed() <= 0.01
                                                 ? String.valueOf(Math.round(position.getSpeed() * 1.852))
-                                                : "0";
-                                vehicle.gpsActualTime = position.getFixTime() != null ? new java.text.SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(position.getFixTime()) : "";
-                                vehicle.angle = String.valueOf((int) position.getCourse());
-                                vehicle.altitude = String.valueOf(position.getAltitude());
+                                                : "0");
+                                vehicle.setGpsActualTime(position.getFixTime() != null
+                                                ? new java.text.SimpleDateFormat("dd-MM-yyyy HH:mm:ss")
+                                                                .format(position.getFixTime())
+                                                : "");
+                                vehicle.setAngle(String.valueOf((int) position.getCourse()));
+                                vehicle.setAltitude(String.valueOf(position.getAltitude()));
 
-                                vehicle.satelliteCount = position.getAttributes() != null && position.getAttributes().get(Position.KEY_SATELLITES) instanceof Number
-                                                                ? ((Number) position.getAttributes().get(Position.KEY_SATELLITES)).intValue()
-                                                                : 0;
+                                vehicle.setSatelliteCount(position.getAttributes() != null && position.getAttributes()
+                                                .get(Position.KEY_SATELLITES) instanceof Number
+                                                                ? ((Number) position.getAttributes()
+                                                                                .get(Position.KEY_SATELLITES))
+                                                                                .intValue()
+                                                                : 0);
 
-                                vehicle.gpsHdop = position.getAttributes() != null && position.getAttributes().get(Position.KEY_HDOP) != null
-                                                ? position.getAttributes().get(Position.KEY_HDOP).toString()
-                                                : "NA";
+                                vehicle.setGpsHdop(position.getAttributes() != null
+                                                && position.getAttributes().get(Position.KEY_HDOP) != null
+                                                                ? position.getAttributes().get(Position.KEY_HDOP)
+                                                                                .toString()
+                                                                : "NA");
 
-                                vehicle.odometer = position.getAttributes() != null && position.getAttributes().get(Position.KEY_ODOMETER) != null
-                                                        ? position.getAttributes().get(Position.KEY_ODOMETER).toString()
-                                                        : "0";
+                                vehicle.setOdometer(position.getAttributes() != null
+                                                && position.getAttributes().get(Position.KEY_ODOMETER) != null
+                                                                ? position.getAttributes().get(Position.KEY_ODOMETER)
+                                                                                .toString()
+                                                                : "0");
 
-                                vehicle.location = position.getAddress() != null ? position.getAddress() : "";
+                                vehicle.setLocation(position.getAddress() != null ? position.getAddress() : "");
 
-                                vehicle.ac = position.getAttributes() != null && position.getAttributes().get("ac") != null
-                                                        ? position.getAttributes().get("ac").toString()
-                                                        : "--";
-                                vehicle.power = position.getAttributes() != null && position.getAttributes().get(Position.KEY_POWER) != null
-                                                ? position.getAttributes().get(Position.KEY_POWER).toString()
-                                                : "--";
-                                vehicle.externalVolt = position.getAttributes() != null && position.getAttributes().get(Position.KEY_BATTERY) != null
-                                                        ? position.getAttributes().get(Position.KEY_BATTERY).toString()
-                                                        : "--";
-                                
-                                vehicle.batteryPercentage = position.getAttributes() != null && position.getAttributes().get(Position.KEY_BATTERY_LEVEL) != null
-                                                                ? ((Number) position.getAttributes().get(Position.KEY_BATTERY_LEVEL)).intValue()
-                                                                : 0;
-                                
-                                vehicle.temperature = position.getAttributes() != null && position.getAttributes().get(Position.KEY_DEVICE_TEMP) != null
-                                                        ? position.getAttributes().get(Position.KEY_DEVICE_TEMP).toString()
-                                                        : "--";
-                                vehicle.heartbeat = position.getAttributes().get("heartbeat") != null
+                                vehicle.setAc(position.getAttributes() != null
+                                                && position.getAttributes().get("ac") != null
+                                                                ? position.getAttributes().get("ac").toString()
+                                                                : "--");
+                                vehicle.setPower(position.getAttributes() != null
+                                                && position.getAttributes().get(Position.KEY_POWER) != null
+                                                                ? position.getAttributes().get(Position.KEY_POWER)
+                                                                                .toString()
+                                                                : "--");
+                                vehicle.setExternalVolt(position.getAttributes() != null
+                                                && position.getAttributes().get(Position.KEY_BATTERY) != null
+                                                                ? position.getAttributes().get(Position.KEY_BATTERY)
+                                                                                .toString()
+                                                                : "--");
+
+                                vehicle.setBatteryPercentage(position.getAttributes() != null
+                                                && position.getAttributes().get(Position.KEY_BATTERY_LEVEL) != null
+                                                                ? ((Number) position.getAttributes()
+                                                                                .get(Position.KEY_BATTERY_LEVEL))
+                                                                                .intValue()
+                                                                : 0);
+
+                                vehicle.setTemperature(position.getAttributes() != null
+                                                && position.getAttributes().get(Position.KEY_DEVICE_TEMP) != null
+                                                                ? position.getAttributes().get(Position.KEY_DEVICE_TEMP)
+                                                                                .toString()
+                                                                : "--");
+                                vehicle.setHeartbeat(position.getAttributes().get("heartbeat") != null
                                                 ? position.getAttributes().get("heartbeat").toString()
-                                                : "no";
-                                vehicle.door1 = position.getAttributes().get("door1") != null
+                                                : "no");
+                                vehicle.setDoor1(position.getAttributes().get("door1") != null
                                                 ? position.getAttributes().get("door1").toString()
-                                                : "--";
-                                vehicle.door2 = position.getAttributes().get("door2") != null
+                                                : "--");
+                                vehicle.setDoor2(position.getAttributes().get("door2") != null
                                                 ? position.getAttributes().get("door2").toString()
-                                                : "--";
-                                vehicle.door3 = position.getAttributes().get("door3") != null
+                                                : "--");
+                                vehicle.setDoor3(position.getAttributes().get("door3") != null
                                                 ? position.getAttributes().get("door3").toString()
-                                                : "--";
-                                vehicle.door4 = position.getAttributes().get("door4") != null
+                                                : "--");
+                                vehicle.setDoor4(position.getAttributes().get("door4") != null
                                                 ? position.getAttributes().get("door4").toString()
-                                                : "--";
-                                vehicle.elock = position.getAttributes().get("elock") != null
+                                                : "--");
+                                vehicle.setElock(position.getAttributes().get("elock") != null
                                                 ? position.getAttributes().get("elock").toString()
-                                                : "--";
-                                vehicle.immobilizeState = device.getAttributes() != null && device.getAttributes().get("immobilizeState") != null
-                                                        ? device.getAttributes().get("immobilizeState").toString()
-                                                        : "--";
-                                vehicle.ign = position.getAttributes() != null && position.getAttributes().get(Position.KEY_IGNITION) != null
-                                                ? position.getAttributes().get(Position.KEY_IGNITION).toString()
-                                                : "--";
+                                                : "--");
+                                vehicle.setImmobilizeState(device.getAttributes() != null
+                                                && device.getAttributes().get("immobilizeState") != null
+                                                                ? device.getAttributes().get("immobilizeState")
+                                                                                .toString()
+                                                                : "--");
+                                vehicle.setIgn(position.getAttributes() != null
+                                                && position.getAttributes().get(Position.KEY_IGNITION) != null
+                                                                ? position.getAttributes().get(Position.KEY_IGNITION)
+                                                                                .toString()
+                                                                : "--");
 
-                                vehicle.sos = position.getAttributes() != null
+                                vehicle.setSos(position.getAttributes() != null
                                                 && position.getAttributes().get(Position.KEY_ALARM) != null
                                                 && position.getAttributes().get(Position.KEY_ALARM).toString()
                                                                 .contains(Position.ALARM_SOS)
                                                                                 ? Position.ALARM_SOS
-                                                                                : "--";
-                                vehicle.poi = position.getAttributes() != null
+                                                                                : "--");
+                                vehicle.setPoi(position.getAttributes() != null
                                                 && position.getAttributes().get("poi") != null
                                                                 ? position.getAttributes().get("poi").toString()
-                                                                : "--";
+                                                                : "--");
                                 Object fuelObj = position.getAttributes().get("fuel");
                                 if (fuelObj instanceof List<?>) {
                                         @SuppressWarnings("unchecked")
                                         List<String> fuelList = (List<String>) fuelObj;
-                                        vehicle.fuel = fuelList;
+                                        vehicle.setFuel(fuelList);
                                 } else if (fuelObj != null) {
-                                        vehicle.fuel = new ArrayList<>();
-                                        vehicle.fuel.add(fuelObj.toString());
+                                        List<String> fuelList = new ArrayList<>();
+                                        fuelList.add(fuelObj.toString());
+                                        vehicle.setFuel(fuelList);
                                 } else {
-                                        vehicle.fuel = new ArrayList<>();
+                                        vehicle.setFuel(new ArrayList<>());
                                 }
-                                vehicle.mcc = position.getNetwork() != null
+                                vehicle.setMcc(position.getNetwork() != null
                                                 && position.getNetwork().getCellTowers() != null
                                                 && !position.getNetwork().getCellTowers().isEmpty()
                                                                 ? String.valueOf(position.getNetwork().getCellTowers()
-                                                                                .iterator().next().getMobileCountryCode())
-                                                                : "--";
-                                vehicle.mnc = position.getNetwork() != null
+                                                                                .iterator().next()
+                                                                                .getMobileCountryCode())
+                                                                : "--");
+                                vehicle.setMnc(position.getNetwork() != null
                                                 && position.getNetwork().getCellTowers() != null
                                                 && !position.getNetwork().getCellTowers().isEmpty()
                                                                 ? String.valueOf(position.getNetwork().getCellTowers()
-                                                                                .iterator().next().getMobileNetworkCode())
-                                                                : "--";
-                                vehicle.cellid = position.getNetwork() != null
+                                                                                .iterator().next()
+                                                                                .getMobileNetworkCode())
+                                                                : "--");
+                                vehicle.setCellid(position.getNetwork() != null
                                                 && position.getNetwork().getCellTowers() != null
                                                 && !position.getNetwork().getCellTowers().isEmpty()
                                                                 ? String.valueOf(position.getNetwork().getCellTowers()
                                                                                 .iterator().next().getCellId())
-                                                                : "NA";
-                                vehicle.lac = position.getNetwork() != null
+                                                                : "NA");
+                                vehicle.setLac(position.getNetwork() != null
                                                 && position.getNetwork().getCellTowers() != null
                                                 && !position.getNetwork().getCellTowers().isEmpty()
                                                                 ? String.valueOf(position.getNetwork().getCellTowers()
-                                                                                .iterator().next().getLocationAreaCode())
-                                                                : "";
+                                                                                .iterator().next()
+                                                                                .getLocationAreaCode())
+                                                                : "");
                         }
 
                         // Other attributes (if available)
-                        vehicle.branch = device.getAttributes() != null && device.getAttributes().get("branch") != null
+                        vehicle.setBranch(device.getAttributes() != null && device.getAttributes().get("branch") != null
                                         ? device.getAttributes().get("branch").toString()
-                                        : "";
-                        vehicle.vehicleType = device.getAttributes() != null
+                                        : "");
+                        vehicle.setVehicleType(device.getAttributes() != null
                                         && device.getAttributes().get("vehicleType") != null
                                                         ? device.getAttributes().get("vehicleType").toString()
-                                                        : "";
-                        vehicle.driverFirstName = device.getAttributes() != null
+                                                        : "");
+                        vehicle.setDriverFirstName(device.getAttributes() != null
                                         && device.getAttributes().get("driverFirstName") != null
                                                         ? device.getAttributes().get("driverFirstName").toString()
-                                                        : "--";
-                        vehicle.driverMiddleName = device.getAttributes() != null
+                                                        : "--");
+                        vehicle.setDriverMiddleName(device.getAttributes() != null
                                         && device.getAttributes().get("driverMiddleName") != null
                                                         ? device.getAttributes().get("driverMiddleName").toString()
-                                                        : "--";
-                        vehicle.driverLastName = device.getAttributes() != null
+                                                        : "--");
+                        vehicle.setDriverLastName(device.getAttributes() != null
                                         && device.getAttributes().get("driverLastName") != null
                                                         ? device.getAttributes().get("driverLastName").toString()
-                                                        : "--";
-                        vehicle.ibuttonRfid = device.getAttributes() != null
+                                                        : "--");
+                        vehicle.setIbuttonRfid(device.getAttributes() != null
                                         && device.getAttributes().get("ibutton") != null
                                                         ? device.getAttributes().get("ibutton").toString()
-                                                        : "--";
+                                                        : "--");
 
-                        response.root.vehicleData.add(vehicle);
+                        response.getRoot().getVehicleData().add(vehicle);
                 }
 
                 return Response.ok(response).build();
