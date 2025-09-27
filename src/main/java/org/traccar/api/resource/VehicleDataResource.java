@@ -229,7 +229,7 @@ public class VehicleDataResource {
                         Position position = null; // revisit
                         if (device.getPositionId() != 0) {
                                 Condition posCond = new Condition.Equals("id", device.getPositionId());
-                                Request posReq = new Request(posCond);
+                                Request posReq = new Request(new org.traccar.storage.query.Columns.All(),posCond);
                                 position = storage.getObject(Position.class, posReq);
                         }
                         VehicleDataResponse.VehicleData vehicle = new VehicleDataResponse.VehicleData();
