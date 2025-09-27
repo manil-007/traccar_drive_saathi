@@ -125,8 +125,8 @@ public class GenerateAccessTokenResource {
         }
 
         // Call Traccar login API (avoid deprecated URL(String) constructor)
-        // URI uri = new URI("https://drivesathi.tnvconsult.com/api/session");
-        URI uri = new URI("http://localhost:8082/api/session");
+        URI uri = new URI("https://drivesathi.tnvconsult.com/api/session");
+        // URI uri = new URI("http://localhost:8082/api/session");
         URL url = uri.toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
