@@ -553,22 +553,10 @@ public class VehicleDataResource {
                 }
         }
 
-        @PermitAll
+        
         @POST
         public Response getVehicleData(@Context HttpHeaders headers, VehicleDataRequest request) throws Exception {
-                // 1. Get token from header
-                String token = headers.getHeaderString("auth-code");
-                if (token == null || token.trim().isEmpty()) {
-                        return Response.status(Response.Status.UNAUTHORIZED).entity("Missing auth-code header.")
-                                        .build();
-                }
-
-                // 2. Validate token
-                String cookie = GenerateAccessTokenResource.getCookieForToken(token);
-                if (cookie == null) {
-                        return Response.status(Response.Status.UNAUTHORIZED).entity("Invalid or expired token.")
-                                        .build();
-                }
+                
                 VehicleDataResponse response = new VehicleDataResponse();
 
                 Set<String> imeiSet = new HashSet<>();
