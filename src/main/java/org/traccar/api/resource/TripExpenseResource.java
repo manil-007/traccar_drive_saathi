@@ -37,7 +37,7 @@ public class TripExpenseResource {
     @Inject
     private Config config;
 
-    private static final String ORS_API_KEY = System.getenv("ORS_API_KEY");
+    private static final String ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjM0MzRmMTE2MDYyNDQyMWI5YWI1ZjFjNjZkMDEyZjJmIiwiaCI6Im11cm11cjY0In0=";
 
     // Caches disabled for debugging: always fetch fresh data from ORS
     private static final Logger LOGGER = LoggerFactory.getLogger(TripExpenseResource.class);
@@ -493,7 +493,7 @@ public class TripExpenseResource {
             tripSummary.put("to", destination);
             tripSummary.put("vehicle_type", vehicleType);
             tripSummary.put("distance_km", round(distanceKm, 2));
-            tripSummary.put("duration_hr", round(durationHr * 1.5, 2));
+            // tripSummary.put("duration_hr", round(durationHr * 1.5, 2));
             tripSummary.put("mileage", mileage);
             // include fuel_tank_capacity only if provided by user
             if (payload.containsKey("fuel_tank_capacity")) {
