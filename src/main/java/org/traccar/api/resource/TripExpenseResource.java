@@ -50,8 +50,8 @@ public class TripExpenseResource {
 
     record RequestPayload(String start, String destination, String vehicle_type, Double mileage,
             Double fuel_tank_capacity, Double border_expense, Double loading_unloading,
-            Double tyre, Boolean loaded, Double incentive, Double da_trip_amount,
-            Integer journey_time_days) {
+            Double tyre, Boolean loaded, Double incentive, Double da_amount_per_day,
+            Double kilometers_per_day, Integer journey_time_days) {
     }
 
     @POST
@@ -96,25 +96,48 @@ public class TripExpenseResource {
                 }
             }
 
-            // Basic validation
-            if (payload == null || !payload.containsKey("start") || !payload.containsKey("destination")
-                    || !payload.containsKey("vehicle_type") || !payload.containsKey("mileage")) {
+            // Basic validation: require vehicle_type and mileage, and exactly one of
+            // either textual start/destination OR start_coord/dest_coord (not both).
+            if (payload == null || !payload.containsKey("vehicle_type") || payload.get("vehicle_type") == null
+                    || !payload.containsKey("mileage") || payload.get("mileage") == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Map.of("error", "Missing required fields: start, destination, vehicle_type, mileage"))
+                        .entity(Map.of("error", "Missing required fields: vehicle_type and mileage"))
                         .build();
             }
 
-            String start = payload.get("start").toString();
-            String destination = payload.get("destination").toString();
-            String vehicleType = payload.get("vehicle_type").toString();
+            boolean hasText = payload.containsKey("start") && payload.get("start") != null
+                    && payload.containsKey("destination")
+                    && payload.get("destination") != null;
+            boolean hasCoords = payload.containsKey("start_coord") && payload.get("start_coord") != null
+                    && payload.containsKey("dest_coord")
+                    && payload.get("dest_coord") != null;
+            if (hasText == hasCoords) { // either both true or both false
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("error",
+                                "Please provide either 'start' and 'destination' (text) OR 'start_coord' and 'dest_coord' (coordinates), but not both"))
+                        .build();
+            }
+
+            // start/destination may be provided as text or as coordinates. Prefer text
+            // when available; otherwise, we'll fill them from parsed coords for the
+            // response.
+            String start = null;
+            String destination = null;
+            if (payload.containsKey("start") && payload.get("start") != null) {
+                start = payload.get("start").toString();
+            }
+            if (payload.containsKey("destination") && payload.get("destination") != null) {
+                destination = payload.get("destination").toString();
+            }
+            String vehicleType = payload.get("vehicle_type") != null ? payload.get("vehicle_type").toString() : "";
             double mileage = toDouble(payload.get("mileage"));
 
-            if (!payload.containsKey("fuel_type")) {
+            if (!payload.containsKey("fuel_type") || payload.get("fuel_type") == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(Map.of("error", "Missing required field: fuel_type (petrol|diesel|cng)"))
                         .build();
             }
-            String fuelType = payload.get("fuel_type").toString();
+            String fuelType = payload.get("fuel_type") != null ? payload.get("fuel_type").toString() : "";
 
             // fuel tank capacity and starting fuel (optional)
             double fuelTankCapacity = payload.containsKey("fuel_tank_capacity")
@@ -123,8 +146,29 @@ public class TripExpenseResource {
             double startFuel = payload.containsKey("start_fuel") ? toDouble(payload.get("start_fuel"))
                     : fuelTankCapacity * 0.9;
 
-            // get route from ORS
-            Map<String, Object> route = getRoute(start, destination);
+            // get route from ORS. If user provided explicit coordinates, prefer them.
+            Map<String, Object> route = null;
+            List<Double> startCoordParsed = null;
+            List<Double> destCoordParsed = null;
+            if (payload.containsKey("start_coord") && payload.containsKey("dest_coord")) {
+                startCoordParsed = parseCoord(payload.get("start_coord"));
+                destCoordParsed = parseCoord(payload.get("dest_coord"));
+            }
+            if (startCoordParsed != null && destCoordParsed != null) {
+                // use provided coordinates (expects [lon, lat] ordering internally)
+                route = getRouteUsingCoords(startCoordParsed, destCoordParsed);
+                // If textual start/destination weren't provided, synthesize them as
+                // lat,lon strings for the response.
+                if (start == null) {
+                    start = String.valueOf(startCoordParsed.get(1)) + "," + String.valueOf(startCoordParsed.get(0));
+                }
+                if (destination == null) {
+                    destination = String.valueOf(destCoordParsed.get(1)) + "," + String.valueOf(destCoordParsed.get(0));
+                }
+            } else {
+                // fallback to geocoding by text
+                route = getRoute(start, destination);
+            }
             if (route == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(Map.of("error", "Unable to compute route", "reason",
@@ -296,7 +340,7 @@ public class TripExpenseResource {
              * 
              */
 
-            // initialize toll accumulators (was removed accidentally in edits)
+            // initialize toll accumulators
             String tollKey = mapVehicleType(vehicleType);
             double tollTotal = 0.0;
             List<Map<String, Object>> tollDetails = new ArrayList<>();
@@ -476,9 +520,30 @@ public class TripExpenseResource {
             double incentive = payload.getOrDefault("incentive", 0) instanceof Number
                     ? ((Number) payload.getOrDefault("incentive", 0)).doubleValue()
                     : Double.parseDouble(payload.getOrDefault("incentive", "0").toString());
-            double da = payload.getOrDefault("da_trip_amount", 0) instanceof Number
-                    ? ((Number) payload.getOrDefault("da_trip_amount", 0)).doubleValue()
-                    : Double.parseDouble(payload.getOrDefault("da_trip_amount", "0").toString());
+
+            // compute DA: require kilometers_per_day (always), da_amount_per_day is
+            // optional
+            double da = 0.0;
+            int journeyDays = 0;
+            if (!payload.containsKey("kilometers_per_day") || payload.get("kilometers_per_day") == null
+                    || toDouble(payload.get("kilometers_per_day")) <= 0.0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("error", "Missing or invalid required field: kilometers_per_day (must be > 0)"))
+                        .build();
+            }
+
+            double kmPerDay = toDouble(payload.get("kilometers_per_day"));
+            // duration rounded up to nearest whole day
+            journeyDays = (int) Math.ceil(distanceKm / kmPerDay);
+            if (journeyDays < 1)
+                journeyDays = 1;
+
+            // da_amount_per_day is optional; if provided, compute total DA, otherwise 0
+            double daPerDay = payload.containsKey("da_amount_per_day") && payload.get("da_amount_per_day") != null
+                    ? toDouble(payload.get("da_amount_per_day"))
+                    : 0.0;
+            da = daPerDay * journeyDays;
+
             double additionalCost = payload.getOrDefault("additional_cost", 0) instanceof Number
                     ? ((Number) payload.getOrDefault("additional_cost", 0)).doubleValue()
                     : Double.parseDouble(payload.getOrDefault("additional_cost", "0").toString());
@@ -495,6 +560,10 @@ public class TripExpenseResource {
             tripSummary.put("distance_km", round(distanceKm, 2));
             // tripSummary.put("duration_hr", round(durationHr * 1.5, 2));
             tripSummary.put("mileage", mileage);
+            // include computed journey days if available
+            if (journeyDays > 0) {
+                tripSummary.put("journey_time_days", journeyDays);
+            }
             // include fuel_tank_capacity only if provided by user
             if (payload.containsKey("fuel_tank_capacity")) {
                 tripSummary.put("fuel_tank_capacity", fuelTankCapacity);
@@ -555,6 +624,7 @@ public class TripExpenseResource {
                 .build();
 
         HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
+        String text = resp.body();
         if (resp.statusCode() != 200) {
             lastRouteError = "directions_http_" + resp.statusCode();
             LOGGER.warn("ORS directions request failed: status={} body={}...", resp.statusCode(),
@@ -563,7 +633,7 @@ public class TripExpenseResource {
             return null;
         }
 
-        String text = resp.body();
+        // String text = resp.body();
         double distance = 0.0;
         double duration = 0.0;
         List<List<Double>> points = new ArrayList<>();
@@ -694,24 +764,64 @@ public class TripExpenseResource {
         return c;
     }
 
-    private List<Map<String, Object>> loadJsonListResource(String path) {
-        try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
-            if (is == null)
-                return List.of();
-            String text = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
-                    .collect(Collectors.joining("\n"));
-            var arr = new org.json.JSONArray(text);
-            List<Map<String, Object>> list = new ArrayList<>();
-            for (int i = 0; i < arr.length(); i++) {
-                var o = arr.getJSONObject(i);
-                Map<String, Object> map = o.toMap();
-                list.add(map);
+    /**
+     * Reverse geocode a lat,lon point using ORS and return nearest routable
+     * [lon,lat]
+     * or null if none found.
+     */
+    private List<Double> reverseGeocodePoint(Double lat, Double lon) {
+        try {
+            var client = HttpClient.newHttpClient();
+            String q = String.format(java.util.Locale.ROOT, "%f,%f", lat, lon);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.openrouteservice.org/geocode/reverse?point=" + q + "&size=1"))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Authorization", ORS_API_KEY)
+                    .GET()
+                    .build();
+            HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
+                return null;
             }
-            return list;
-        } catch (IOException e) {
-            return List.of();
+            var obj = new org.json.JSONObject(resp.body());
+            var features = obj.optJSONArray("features");
+            if (features == null || features.length() == 0)
+                return null;
+            var feat = features.getJSONObject(0);
+            if (!feat.has("geometry"))
+                return null;
+            var geom = feat.getJSONObject("geometry");
+            if (!geom.has("coordinates"))
+                return null;
+            var coords = geom.getJSONArray("coordinates");
+            double rlon = coords.getDouble(0);
+            double rlat = coords.getDouble(1);
+            // Return as [lon, lat]
+            return List.of(rlon, rlat);
+        } catch (Exception e) {
+            LOGGER.warn("reverseGeocodePoint failed: {}", e.getMessage());
+            return null;
         }
     }
+
+    // private List<Map<String, Object>> loadJsonListResource(String path) {
+    //     try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
+    //         if (is == null)
+    //             return List.of();
+    //         String text = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
+    //                 .collect(Collectors.joining("\n"));
+    //         var arr = new org.json.JSONArray(text);
+    //         List<Map<String, Object>> list = new ArrayList<>();
+    //         for (int i = 0; i < arr.length(); i++) {
+    //             var o = arr.getJSONObject(i);
+    //             Map<String, Object> map = o.toMap();
+    //             list.add(map);
+    //         }
+    //         return list;
+    //     } catch (IOException e) {
+    //         return List.of();
+    //     }
+    // }
 
     // convert various numeric object representations to double
     private double toDouble(Object o) {
@@ -848,13 +958,13 @@ public class TripExpenseResource {
             return "car";
         t = t.toLowerCase();
         return switch (t) {
-            case "car", "van" -> "car";
+            case "car", "van", "jeep" -> "car";
             case "lcv" -> "lcv";
             case "bus", "truck" -> "bus";
-            case "multi axle" -> "multi_axle";
-            case "4to6 axle" -> "4to6_axle";
-            case "7 or more axle" -> "7_or_more_axle";
-            case "hcm_eme" -> "hcm_eme";
+            case "multi axle", "multi_axle" -> "multi_axle";
+            case "4 to 6 axle", "4to6_axle" -> "4to6_axle";
+            case "7 or more axle", "7_or_more_axle" -> "7_or_more_axle";
+            case "hcm eme", "hcm_eme" -> "hcm_eme";
             default -> "car";
         };
     }
@@ -993,6 +1103,199 @@ public class TripExpenseResource {
             path.add(p);
         }
         return path;
+    }
+
+    /**
+     * Parse a coordinate input which may be a string like "lat,lon", a list [lat,
+     * lon]
+     * or a map with lat/lon keys. Returns a list [lon, lat] as expected by ORS.
+     */
+    private List<Double> parseCoord(Object input) {
+        if (input == null)
+            return null;
+        try {
+            if (input instanceof List<?> lst && lst.size() >= 2) {
+                double a = toDouble(lst.get(0));
+                double b = toDouble(lst.get(1));
+                // if a looks like latitude (-90..90) and b looks like longitude (-180..180)
+                if (Math.abs(a) <= 90 && Math.abs(b) <= 180) {
+                    // input likely [lat, lon] -> return [lon, lat]
+                    return List.of(b, a);
+                } else {
+                    // fallback: return as [lon, lat]
+                    return List.of(a, b);
+                }
+            }
+            if (input instanceof String s) {
+                String str = s.trim();
+                if (str.contains(",")) {
+                    String[] parts = str.split("\\s*,\\s*");
+                    if (parts.length >= 2) {
+                        double first = Double.parseDouble(parts[0]);
+                        double second = Double.parseDouble(parts[1]);
+                        if (Math.abs(first) <= 90 && Math.abs(second) <= 180) {
+                            return List.of(second, first);
+                        } else {
+                            return List.of(first, second);
+                        }
+                    }
+                }
+            }
+            if (input instanceof Map<?, ?> m) {
+                Object latObj = m.containsKey("lat") ? m.get("lat")
+                        : (m.containsKey("latitude") ? m.get("latitude") : null);
+                Object lonObj = m.containsKey("lon") ? m.get("lon")
+                        : (m.containsKey("longitude") ? m.get("longitude") : null);
+                if (latObj != null && lonObj != null) {
+                    double lat = toDouble(latObj);
+                    double lon = toDouble(lonObj);
+                    return List.of(lon, lat);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.warn("parseCoord failed: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Request route using explicit coordinates (each as [lon, lat]).
+     */
+    private Map<String, Object> getRouteUsingCoords(List<Double> startCoord, List<Double> destCoord) throws Exception {
+        if (startCoord == null || destCoord == null || startCoord.size() < 2 || destCoord.size() < 2) {
+            lastRouteError = "invalid_coords";
+            return null;
+        }
+
+        var client = HttpClient.newHttpClient();
+        String body = "{\"coordinates\":[[" + startCoord.get(0) + "," + startCoord.get(1) + "],[" + destCoord.get(0)
+                + "," + destCoord.get(1) + "]] }";
+
+        LOGGER.info("ORS directions request body (coords) (trimmed 500 chars): {}",
+                body.length() > 500 ? body.substring(0, 500) : body);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.openrouteservice.org/v2/directions/driving-car"))
+                .timeout(Duration.ofSeconds(30))
+                .header("Content-Type", "application/json")
+                .header("Authorization", ORS_API_KEY)
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+
+        HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
+        String text = resp.body();
+        if (resp.statusCode() != 200) {
+            // If ORS returned a routable-point error (common when point is off-road),
+            // try snapping the points via reverse geocode and retry once.
+            String bodyText = resp.body() == null ? "" : resp.body();
+            LOGGER.warn("ORS directions request failed: status={} body={}...", resp.statusCode(),
+                    bodyText.length() > 500 ? bodyText.substring(0, 500) : bodyText);
+            // Detect common ORS code 2010 or message text
+            if (resp.statusCode() == 404 && bodyText.contains("Could not find routable point")) {
+                // attempt to snap start and dest using reverse geocode
+                List<Double> snappedStart = reverseGeocodePoint(startCoord.get(1), startCoord.get(0));
+                List<Double> snappedDest = reverseGeocodePoint(destCoord.get(1), destCoord.get(0));
+                if (snappedStart != null && snappedDest != null) {
+                    LOGGER.info("Snapped coords: start={} dest={}", snappedStart, snappedDest);
+                    // rebuild request with snapped coords
+                    String body2 = "{\"coordinates\":[[" + snappedStart.get(0) + "," + snappedStart.get(1) + "],["
+                            + snappedDest.get(0)
+                            + "," + snappedDest.get(1) + "]] }";
+                    HttpRequest req2 = HttpRequest.newBuilder()
+                            .uri(URI.create("https://api.openrouteservice.org/v2/directions/driving-car"))
+                            .timeout(Duration.ofSeconds(30))
+                            .header("Content-Type", "application/json")
+                            .header("Authorization", ORS_API_KEY)
+                            .POST(HttpRequest.BodyPublishers.ofString(body2))
+                            .build();
+                    HttpResponse<String> resp2 = client.send(req2, HttpResponse.BodyHandlers.ofString());
+                    if (resp2.statusCode() == 200) {
+                        // parse resp2 as usual
+                        text = resp2.body();
+                    } else {
+                        lastRouteError = "directions_http_" + resp2.statusCode();
+                        LOGGER.warn("ORS retry after snap failed: status={} body={}...", resp2.statusCode(),
+                                resp2.body() == null ? "<empty>"
+                                        : (resp2.body().length() > 500 ? resp2.body().substring(0, 500)
+                                                : resp2.body()));
+                        return null;
+                    }
+                } else {
+                    lastRouteError = "routable_point_not_found_and_snap_failed";
+                    return null;
+                }
+            } else {
+                lastRouteError = "directions_http_" + resp.statusCode();
+                return null;
+            }
+        }
+
+        double distance = 0.0;
+        double duration = 0.0;
+        List<List<Double>> points = new ArrayList<>();
+        try {
+            var obj = new org.json.JSONObject(text);
+            var routes = obj.getJSONArray("routes");
+            if (routes.length() > 0) {
+                var route = routes.getJSONObject(0);
+                if (route.has("summary")) {
+                    var summary = route.getJSONObject("summary");
+                    distance = summary.optDouble("distance", 0.0) / 1000.0;
+                    duration = summary.optDouble("duration", 0.0) / 3600.0;
+                }
+                if (route.has("geometry")) {
+                    var geom = route.get("geometry");
+                    if (geom instanceof org.json.JSONObject) {
+                        var g = (org.json.JSONObject) geom;
+                        if (g.has("coordinates")) {
+                            var coords = g.getJSONArray("coordinates");
+                            for (int i = 0; i < coords.length(); i++) {
+                                var pair = coords.getJSONArray(i);
+                                double lon = pair.getDouble(0);
+                                double lat = pair.getDouble(1);
+                                List<Double> p = new ArrayList<>();
+                                p.add(lon);
+                                p.add(lat);
+                                points.add(p);
+                            }
+                        }
+                    } else if (geom instanceof org.json.JSONArray) {
+                        var coords = (org.json.JSONArray) geom;
+                        for (int i = 0; i < coords.length(); i++) {
+                            var pair = coords.getJSONArray(i);
+                            double lon = pair.getDouble(0);
+                            double lat = pair.getDouble(1);
+                            List<Double> p = new ArrayList<>();
+                            p.add(lon);
+                            p.add(lat);
+                            points.add(p);
+                        }
+                    } else if (geom instanceof String) {
+                        String encoded = ((String) geom).trim();
+                        try {
+                            List<List<Double>> decoded = decodePolyline(encoded, 5);
+                            if (decoded.isEmpty()) {
+                                decoded = decodePolyline(encoded, 6);
+                            }
+                            if (!decoded.isEmpty()) {
+                                points.addAll(decoded);
+                            }
+                        } catch (Exception e) {
+                            LOGGER.warn("Error while decoding encoded polyline geometry: {}", e.getMessage());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            lastRouteError = "directions_parse_error: " + e.getMessage();
+            LOGGER.warn("Failed to parse ORS directions response: {}", e.getMessage());
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("distance_km", distance);
+        result.put("duration_hr", duration);
+        result.put("points", points);
+        return result;
     }
 
 }
