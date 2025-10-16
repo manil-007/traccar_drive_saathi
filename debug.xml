@@ -28,4 +28,17 @@
     <entry key='atrack.custom'>true</entry>
     <entry key='intellitrac.port'>6037</entry>
 
+    <!-- Enable using environment variables instead of XML if you want (optional) -->
+    <entry key="config.useEnvironmentVariables">false</entry>
+
+    <!-- APISETU configuration -->
+    <entry key="apisetu.baseUrl">https://sandbox.api-setu.in/</entry>
+    <entry key="apisetu.apiKey">demokey123456ABCD789</entry>
+    <entry key="apisetu.clientId">in.gov.sandbox</entry>
+    
+    <!-- Ola Maps API key-->
+    <entry key="ola.maps.apiKey">qrhV0iCzP4zV33vbcO3p1guSQWYrePDC9T5KW9a4</entry>
+    <!-- ORS (OpenRouteService) API key used for directions/geocoding in TripExpenseResource2 -->
+    <entry key="ors.apiKey">eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjM0MzRmMTE2MDYyNDQyMWI5YWI1ZjFjNjZkMDEyZjJmIiwiaCI6Im11cm11cjY0In0=</entry>
+
 </properties>

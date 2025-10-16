@@ -1,3 +1,4 @@
+
 package org.traccar.api.resource;
 
 import jakarta.inject.Inject;
@@ -29,32 +30,35 @@ import java.util.Map;
 
 import java.util.stream.Collectors;
 
-@Path("tripExpense")
+@Path("tripExpense2")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_FORM_URLENCODED })
-public class TripExpenseResource {
+public class TripExpenseResource2 {
 
     @Inject
     private Config config;
 
-    private String getOlaApiKey() {
+    private String getOrsApiKey() {
         try {
-            String k = config.getString(Keys.OLA_MAPS_API_KEY);
+            String k = config.getString(Keys.ORS_API_KEY);
             if (k == null || k.isBlank()) {
-                LOGGER.warn("Ola Maps API key (ola.maps.apiKey) is missing from configuration");
+                LOGGER.warn("ORS API key (ors.apiKey) is missing from configuration");
                 return "";
             }
             return k;
         } catch (Exception e) {
-            LOGGER.warn("Failed to read Ola Maps API key from config: {}", e.getMessage());
+            LOGGER.warn("Failed to read ORS API key from config: {}", e.getMessage());
             return "";
         }
     }
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TripExpenseResource.class);
+    // Caches disabled for debugging: always fetch fresh data from ORS
+    private static final Logger LOGGER = LoggerFactory.getLogger(TripExpenseResource2.class);
+    // lastRouteError captures a short human-readable reason when ORS
+    // geocode/directions fail
     private String lastRouteError = null;
 
-    public TripExpenseResource() {
+    public TripExpenseResource2() {
     }
 
     record RequestPayload(String start, String destination, String vehicle_type, Double mileage,
@@ -63,57 +67,51 @@ public class TripExpenseResource {
             Double kilometers_per_day, Integer journey_time_days) {
     }
 
+    @SuppressWarnings("unused")
     @POST
     public Response calculate(@jakarta.ws.rs.core.Context jakarta.servlet.http.HttpServletRequest servletRequest) {
         try {
-            // Guard: servletRequest may be null in some hosting environments/tools
-            if (servletRequest == null) {
-                return Response.status(Response.Status.BAD_REQUEST).entity(Map.of("error", "empty_body")).build();
-            }
             // Build payload map from either JSON body or form parameters
             Map<String, Object> payload = new HashMap<>();
             String contentType = servletRequest != null && servletRequest.getContentType() != null
                     ? servletRequest.getContentType().toLowerCase()
                     : "";
             if (contentType.startsWith("application/x-www-form-urlencoded")) {
-                // parse form parameters
-                var params = servletRequest.getParameterMap();
-                for (var e : params.entrySet()) {
-                    String k = e.getKey();
-                    String[] vals = e.getValue();
-                    if (vals != null && vals.length > 0)
-                        payload.put(k, vals[0]);
-                }
-            } else {
-                // try read JSON body
-                try (BufferedReader br = new BufferedReader(
-                        new InputStreamReader(servletRequest.getInputStream(), StandardCharsets.UTF_8))) {
-                    String text = br.lines().collect(Collectors.joining("\n"));
-                    if (text != null && !text.isBlank()) {
-                        try {
-                            var obj = new org.json.JSONObject(text);
-                            for (String key : obj.keySet()) {
-                                payload.put(key, obj.get(key));
-                            }
-                        } catch (Exception ex) {
-                            // ignore JSON parse error and continue with empty payload
-                        }
-                    }
-                } catch (Exception ex) {
-                    // ignore reading body
-                }
-                // fallback to query/form params if body empty
-                if (payload.isEmpty() && servletRequest != null) {
-                    var params = servletRequest.getParameterMap();
-                    for (var e : params.entrySet()) {
+                if (servletRequest != null) {
+                    Map<String, String[]> paramMap = servletRequest.getParameterMap();
+                    for (Map.Entry<String, String[]> e : paramMap.entrySet()) {
                         String k = e.getKey();
                         String[] vals = e.getValue();
-                        if (vals != null && vals.length > 0)
+                        if (vals != null && vals.length > 0) {
                             payload.put(k, vals[0]);
+                        }
+                    }
+                }
+            } else {
+                // attempt to read JSON body (or any body) and parse to payload map
+                StringBuilder sb = new StringBuilder();
+                if (servletRequest != null) {
+                    try (BufferedReader reader = servletRequest.getReader()) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            sb.append(line);
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (sb.length() > 0) {
+                    try {
+                        var json = new org.json.JSONObject(sb.toString());
+                        for (String k : json.keySet()) {
+                            payload.put(k, json.get(k));
+                        }
+                    } catch (Exception ignored) {
                     }
                 }
             }
 
+            // Basic validation: require vehicle_type and mileage, and exactly one of
+            // either textual start/destination OR start_coord/dest_coord (not both).
             if (payload == null || !payload.containsKey("vehicle_type") || payload.get("vehicle_type") == null
                     || !payload.containsKey("mileage") || payload.get("mileage") == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -127,13 +125,16 @@ public class TripExpenseResource {
             boolean hasCoords = payload.containsKey("start_coord") && payload.get("start_coord") != null
                     && payload.containsKey("dest_coord")
                     && payload.get("dest_coord") != null;
-            if (hasText == hasCoords) {
+            if (hasText == hasCoords) { // either both true or both false
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(Map.of("error",
-                                "Provide either start/destination text OR start_coord/dest_coord, not both"))
+                                "Please provide either 'start' and 'destination' (text) OR 'start_coord' and 'dest_coord' (coordinates), but not both"))
                         .build();
             }
 
+            // start/destination may be provided as text or as coordinates. Prefer text
+            // when available; otherwise, we'll fill them from parsed coords for the
+            // response.
             String start = null;
             String destination = null;
             if (payload.containsKey("start") && payload.get("start") != null) {
@@ -146,14 +147,20 @@ public class TripExpenseResource {
             double mileage = toDouble(payload.get("mileage"));
 
             if (!payload.containsKey("fuel_type") || payload.get("fuel_type") == null) {
-                payload.put("fuel_type", "petrol");
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("error", "Missing required field: fuel_type (petrol|diesel|cng)"))
+                        .build();
             }
             String fuelType = payload.get("fuel_type") != null ? payload.get("fuel_type").toString() : "";
 
+            // fuel tank capacity and starting fuel (optional)
             double fuelTankCapacity = payload.containsKey("fuel_tank_capacity")
                     ? toDouble(payload.get("fuel_tank_capacity"))
                     : 200.0;
+            double startFuel = payload.containsKey("start_fuel") ? toDouble(payload.get("start_fuel"))
+                    : fuelTankCapacity * 0.9;
 
+            // get route from ORS. If user provided explicit coordinates, prefer them.
             Map<String, Object> route = null;
             List<Double> startCoordParsed = null;
             List<Double> destCoordParsed = null;
@@ -162,42 +169,221 @@ public class TripExpenseResource {
                 destCoordParsed = parseCoord(payload.get("dest_coord"));
             }
             if (startCoordParsed != null && destCoordParsed != null) {
+                // use provided coordinates (expects [lon, lat] ordering internally)
                 route = getRouteUsingCoords(startCoordParsed, destCoordParsed);
+                // If textual start/destination weren't provided, synthesize them as
+                // lat,lon strings for the response.
                 if (start == null) {
-                    start = startCoordParsed.get(1) + "," + startCoordParsed.get(0);
+                    start = String.valueOf(startCoordParsed.get(1)) + "," + String.valueOf(startCoordParsed.get(0));
                 }
                 if (destination == null) {
-                    destination = destCoordParsed.get(1) + "," + destCoordParsed.get(0);
+                    destination = String.valueOf(destCoordParsed.get(1)) + "," + String.valueOf(destCoordParsed.get(0));
                 }
             } else {
+                // fallback to geocoding by text
                 route = getRoute(start, destination);
             }
             if (route == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Map.of("error", "Failed to compute route: " + lastRouteError))
+                        .entity(Map.of("error", "Unable to compute route", "reason",
+                                lastRouteError == null ? "unknown" : lastRouteError))
                         .build();
             }
 
             double distanceKm = toDouble(route.getOrDefault("distance_km", 0.0));
+            // double durationHr = toDouble(route.getOrDefault("duration_hr", 0.0));
             @SuppressWarnings("unchecked")
             List<List<Double>> points = (List<List<Double>>) route.getOrDefault("points", List.of());
 
             if (points.isEmpty()) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Map.of("error", "Route returned no points"))
+                        .entity(Map.of("error", "Route geometry contains no points"))
                         .build();
             }
 
-            // cumulative distances intentionally not used currently
+            // compute cumulative distances along route (km at each point)
+            // List<Double> cumulative = computeCumulativeDistances(points);
 
+            // load tolls and compute tolls along route
             List<Map<String, Object>> tolls = loadTollsResource("data/nhai_toll_data.json");
+            /*
+             * //TODO: fuel simulation
+             * Fuel simulation per user's rules
+             * (Commented out for now so original algorithm can be restored later)
+             *
+             * ... original detailed per-5th-point simulation starts here ...
+             *
+             */
+            /*
+             * List<Map<String, Object>> refuels = new ArrayList<>();
+             * double totalFuelCost = 0.0;
+             * 
+             * double remaining = startFuel; // litres
+             * int pointIndex = 0;
+             * int totalPoints = points.size();
+             * double pointsPerKm = 6.0; // ORS approx 6 points/km
+             * 
+             * LOGGER.
+             * info("Starting fuel simulation: totalPoints={}, distance_km={}, startFuel={}L, capacity={}L, mileage={}"
+             * ,
+             * totalPoints, distanceKm, remaining, fuelTankCapacity, mileage);
+             * 
+             * while (pointIndex < totalPoints) {
+             * // Evaluate at every 5th point
+             * if (pointIndex % 5 == 0) {
+             * double kmAtPoint = cumulative.get(Math.max(0, Math.min(cumulative.size() - 1,
+             * pointIndex)));
+             * double fuelPercent = (remaining / fuelTankCapacity) * 100.0;
+             * LOGGER.info("Fuel check at point {} (km={}): remaining={}L ({}%)",
+             * pointIndex, round(kmAtPoint, 2), round(remaining, 2), round(fuelPercent, 1));
+             * 
+             * if (remaining <= fuelTankCapacity * 0.5 + 1e-9) {
+             * // compute search window using 25% of tank * mileage (km)
+             * double max_distance_km = 0.25 * fuelTankCapacity * mileage;
+             * int search_window_points = Math.max(1, (int) Math.round(max_distance_km *
+             * 5.0));
+             * int windowStart = pointIndex + 1;
+             * int windowEnd = Math.min(totalPoints - 1, pointIndex + search_window_points);
+             * LOGGER.
+             * info("Triggering refuel search at point {}: max_distance_km={}, search_window_points={} (points {}..{})"
+             * ,
+             * pointIndex, round(max_distance_km, 2), search_window_points, windowStart,
+             * windowEnd);
+             * 
+             * // find reachable cities within 35 km of any route point in window
+             * Map<Map<String, Object>, Double> reachable = new HashMap<>();
+             * double nearestDist = Double.MAX_VALUE;
+             * Map<String, Object> nearestCity = null;
+             * 
+             * for (int pi = windowStart; pi <= windowEnd; pi++) {
+             * var pt = points.get(pi);
+             * for (var city : fuelPrices) {
+             * if (!city.containsKey("lat") || !city.containsKey("lon"))
+             * continue;
+             * double cityLat = toDouble(city.get("lat"));
+             * double cityLon = toDouble(city.get("lon"));
+             * double dkm = haversine(pt.get(1), pt.get(0), cityLat, cityLon);
+             * if (dkm <= 35.0) {
+             * double prev = reachable.getOrDefault(city, Double.MAX_VALUE);
+             * if (dkm < prev) reachable.put(city, dkm);
+             * }
+             * if (dkm < nearestDist) {
+             * nearestDist = dkm;
+             * nearestCity = city;
+             * }
+             * }
+             * }
+             * 
+             * Map<String, Object> chosenCity = null;
+             * String chooseReason = "";
+             * if (!reachable.isEmpty()) {
+             * chosenCity = reachable.keySet().stream().min((a, b) ->
+             * Double.compare(toDouble(a.get("price")),
+             * toDouble(b.get("price")))).orElse(null);
+             * chooseReason = "cheapest_in_range";
+             * } else {
+             * chosenCity = nearestCity;
+             * chooseReason = "nearest_fallback";
+             * }
+             * 
+             * if (chosenCity != null) {
+             * double price = toDouble(chosenCity.get("price"));
+             * String cname = chosenCity.getOrDefault("city", "<unknown>").toString();
+             * String cstate = chosenCity.getOrDefault("state", "").toString();
+             * double distanceFromRoute = reachable.containsKey(chosenCity) ?
+             * reachable.get(chosenCity) : nearestDist;
+             * 
+             * LOGGER.
+             * info("Selected refuel city {} ({}) reason={} price={} distanceFromRoute={}km"
+             * , cname, cstate, chooseReason, price, round(distanceFromRoute, 2));
+             * 
+             * double before = remaining;
+             * double target = fuelTankCapacity * 0.9;
+             * double toFill = Math.max(0.0, target - remaining);
+             * double cost = toFill * price;
+             * if (toFill > 0) {
+             * refuels.add(Map.of("city", cname, "state", cstate, "fuel_type", fuelType,
+             * "fuel_price", round(price, 2),
+             * "distance_from_route_km", round(distanceFromRoute, 2), "litres_before",
+             * round(before, 2),
+             * "litres_after", round(remaining + toFill, 2), "litres_filled", round(toFill,
+             * 2), "cost", round(cost, 2), "reason", chooseReason));
+             * totalFuelCost += cost;
+             * remaining += toFill;
+             * LOGGER.info("Refueled at {}. price={}, filled={}L, before={}L, after={}L",
+             * cname, price, round(toFill, 2), round(before, 2), round(remaining, 2));
+             * } else {
+             * LOGGER.info("No fuel needed at chosen city {} (already at {}% capacity)",
+             * cname, round((remaining / fuelTankCapacity) * 100.0, 1));
+             * }
+             * 
+             * int jump_points = Math.max(1, (int) Math.round(0.40 * fuelTankCapacity *
+             * mileage * 5.0));
+             * int oldIdx = pointIndex;
+             * pointIndex = Math.min(totalPoints - 1, pointIndex + jump_points);
+             * double jumpKm = jump_points / 5.0;
+             * LOGGER.info("Jumping ahead after refuel: {} points (~{} km) from {} to {}",
+             * jump_points, round(jumpKm, 2), oldIdx, pointIndex);
+             * continue;
+             * } else {
+             * LOGGER.
+             * warn("No city information available for refuel; performing emergency fill to reach destination"
+             * );
+             * double avgPrice = fuelPrices.stream().mapToDouble(f ->
+             * toDouble(f.get("price"))).average().orElse(0.0);
+             * double distanceToFinish = distanceKm - cumulative.get(Math.max(0,
+             * Math.min(cumulative.size() - 1, pointIndex)));
+             * double need = Math.max(0.0, (distanceToFinish / mileage) - remaining);
+             * double cost = need * avgPrice;
+             * if (need > 0) {
+             * refuels.add(Map.of("city", "emergency", "fuel_type", fuelType, "fuel_price",
+             * round(avgPrice, 2), "litres_filled", round(need, 2), "cost", round(cost, 2),
+             * "reason", "emergency"));
+             * totalFuelCost += cost;
+             * remaining += need;
+             * }
+             * }
+             * }
+             * }
+             * 
+             * // Advance one point and consume fuel accordingly
+             * double kmPerPoint = 1.0 / pointsPerKm;
+             * double consume = (kmPerPoint) / mileage;
+             * remaining = Math.max(0.0, remaining - consume);
+             * pointIndex++;
+             * }
+             * 
+             */
 
-            // simplified fuel handling (same as original)
+            // initialize toll accumulators
+            String tollKey = mapVehicleType(vehicleType);
+            double tollTotal = 0.0;
+            List<Map<String, Object>> tollDetails = new ArrayList<>();
+
+            // load fuel prices dataset (expects data/fuel_prices.json)
+            List<Map<String, Object>> fuelPrices = loadFuelPricesResource("data/fuel_prices.json", fuelType);
+            // Simplified fuel cost calculation (temporary): use user-provided price if
+            // available,
+            // otherwise try to use Delhi default price from the dataset. This keeps the
+            // rest of the
+            // trip/toll calculations functional while the detailed simulator is preserved
+            // above.
             List<Map<String, Object>> refuels = new ArrayList<>();
             double totalFuelCost = 0.0;
 
+            // Decide fuel pricing and total cost.
+            // If user supplies `fuel_cost` treat it as the total amount spent on fuel for
+            // the trip.
+            // Otherwise, if user supplies a per-litre price (fuel_price, fuel_rate,
+            // price_per_litre)
+            // use that; if none provided, fallback to Delhi price from dataset, then first
+            // entry,
+            // then a hardcoded fallback. The `refuels` entry will include price_per_litre,
+            // cost and litres_needed; `source` is returned as an empty string as requested.
+
             double totalFuelNeeded = distanceKm / mileage;
             Double userTotalFuelCost = null;
+            // detect explicit total fuel cost (user meant total spent)
             if (payload.containsKey("fuel_cost")) {
                 try {
                     userTotalFuelCost = toDouble(payload.get("fuel_cost"));
@@ -205,6 +391,7 @@ public class TripExpenseResource {
                 }
             }
 
+            // detect per-litre user price if provided (alternative to fuel_cost)
             Double userPerLitrePrice = null;
             for (String key : new String[] { "fuel_price", "fuel_rate", "price_per_litre" }) {
                 if (payload.containsKey(key)) {
@@ -217,8 +404,10 @@ public class TripExpenseResource {
             }
 
             double usedPrice = 0.0;
+            String priceSource = "";
             if (userTotalFuelCost != null && userTotalFuelCost > 0) {
                 totalFuelCost = userTotalFuelCost;
+                // derive per-litre for reporting if possible
                 if (totalFuelNeeded > 0) {
                     usedPrice = totalFuelCost / totalFuelNeeded;
                 } else {
@@ -231,10 +420,12 @@ public class TripExpenseResource {
                 totalFuelCost = totalFuelNeeded * usedPrice;
                 LOGGER.info("Using user-provided per-litre fuel price: {} per litre", round(usedPrice, 2));
             } else {
-                List<Map<String, Object>> fuelPrices = loadFuelPricesResource("data/fuel_prices.json", fuelType);
+                // try to find Delhi entry in fuelPrices
                 Map<String, Object> delhiEntry = null;
                 for (var e : fuelPrices) {
-                    if ("Delhi".equalsIgnoreCase((String) e.getOrDefault("state", ""))) {
+                    String city = e.getOrDefault("city", "").toString().toLowerCase();
+                    String state = e.getOrDefault("state", "").toString().toLowerCase();
+                    if (city.contains("delhi") || state.contains("delhi")) {
                         delhiEntry = e;
                         break;
                     }
@@ -242,22 +433,27 @@ public class TripExpenseResource {
                 if (delhiEntry != null) {
                     usedPrice = toDouble(delhiEntry.getOrDefault("price", 0.0));
                     totalFuelCost = totalFuelNeeded * usedPrice;
+                    LOGGER.info("Delhi default fuel price applied: {} per litre", round(usedPrice, 2));
                 } else if (!fuelPrices.isEmpty()) {
+                    // fallback to first entry
                     usedPrice = toDouble(fuelPrices.get(0).getOrDefault("price", 0.0));
                     totalFuelCost = totalFuelNeeded * usedPrice;
+                    LOGGER.info("Delhi price not found; using first dataset entry price: {} per litre",
+                            round(usedPrice, 2));
                 } else {
-                    usedPrice = 110.0; // hardcoded fallback
+                    // final fallback hard-coded
+                    usedPrice = 100.0;
                     totalFuelCost = totalFuelNeeded * usedPrice;
+                    LOGGER.warn("Fuel prices dataset empty; using hardcoded fallback price: {} per litre",
+                            round(usedPrice, 2));
                 }
             }
 
+            // record a single synthetic 'refuel' entry (no source text per request)
             refuels.add(Map.of("price_per_litre", round(usedPrice, 2), "cost", round(totalFuelCost, 2),
                     "litres_needed", round(totalFuelNeeded, 2), "source", ""));
 
-            String tollKey = mapVehicleType(vehicleType);
-            double tollTotal = 0.0;
-            List<Map<String, Object>> tollDetails = new ArrayList<>();
-
+            // --- Toll matching: find toll plazas close to the route and sum fees ---
             try {
                 java.util.Set<Object> seen = new java.util.HashSet<>();
                 for (var toll : tolls) {
@@ -267,41 +463,39 @@ public class TripExpenseResource {
                     Object locObj = toll.get("location");
                     double tollLat = Double.NaN, tollLon = Double.NaN;
 
+                    // location may be a nested object with lat/lng, or a list, or top-level keys
                     if (locObj instanceof Map<?, ?> locMap) {
                         Map<?, ?> lm = (Map<?, ?>) locMap;
                         if (lm.containsKey("lat") || lm.containsKey("latitude") || lm.containsKey("lng")
                                 || lm.containsKey("lon") || lm.containsKey("longitude")) {
                             Object latObj = lm.containsKey("lat") ? lm.get("lat")
-                                    : (lm.containsKey("latitude") ? lm.get("latitude") : null);
-                            Object lonObj = lm.containsKey("lon") ? lm.get("lon")
-                                    : (lm.containsKey("longitude") ? lm.get("longitude")
-                                            : (lm.containsKey("lng") ? lm.get("lng") : null));
+                                    : (lm.containsKey("latitude") ? lm.get("latitude") : 0.0);
+                            Object lonObj = lm.containsKey("lng") ? lm.get("lng")
+                                    : (lm.containsKey("lon") ? lm.get("lon")
+                                            : (lm.containsKey("longitude") ? lm.get("longitude") : 0.0));
                             tollLat = toDouble(latObj);
                             tollLon = toDouble(lonObj);
                         }
                     } else if (locObj instanceof List<?> locList && locList.size() >= 2) {
-                        double a = toDouble(locList.get(0));
-                        double b = toDouble(locList.get(1));
-                        if (Math.abs(a) <= 90 && Math.abs(b) <= 180) {
-                            tollLat = a;
-                            tollLon = b;
-                        } else {
-                            tollLat = b;
-                            tollLon = a;
-                        }
+                        tollLat = toDouble(locList.get(0));
+                        tollLon = toDouble(locList.get(1));
                     } else {
-                        Object latObj = toll.get("lat") != null ? toll.get("lat") : toll.get("latitude");
-                        Object lonObj = toll.get("lon") != null ? toll.get("lon") : toll.get("longitude");
-                        if (latObj != null && lonObj != null) {
-                            tollLat = toDouble(latObj);
-                            tollLon = toDouble(lonObj);
+                        // fallback to top-level lat/lon keys
+                        if (toll.containsKey("lat") && (toll.containsKey("lng") || toll.containsKey("lon"))) {
+                            tollLat = toDouble(toll.get("lat"));
+                            tollLon = toll.containsKey("lng") ? toDouble(toll.get("lng")) : toDouble(toll.get("lon"));
+                        } else if (toll.containsKey("latitude") && toll.containsKey("longitude")) {
+                            tollLat = toDouble(toll.get("latitude"));
+                            tollLon = toDouble(toll.get("longitude"));
                         }
                     }
 
+                    // skip invalid locations
                     if (Double.isNaN(tollLat) || Double.isNaN(tollLon) || (tollLat == 0.0 && tollLon == 0.0))
                         continue;
 
-                    double minDist = minDistanceToRoute(tollLat, tollLon, points);
+                    double minDist = minDistanceToRoute(tollLat, tollLon, points); // km
+                    // threshold: consider toll on-route if within 2 km (adjustable)
                     if (minDist <= 2.0) {
                         Object id = toll.getOrDefault("id", toll.get("name"));
                         if (id != null && seen.contains(id))
@@ -312,13 +506,15 @@ public class TripExpenseResource {
                         double fee = extractTollFee(toll, tollKey);
                         if (fee > 0.0) {
                             tollTotal += fee;
-                            Map<String, Object> td = new HashMap<>();
-                            td.put("name", toll.getOrDefault("name", "<unknown>"));
-                            td.put("lat", tollLat);
-                            td.put("lon", tollLon);
-                            td.put("fee", fee);
-                            td.put("distance_from_route_km", round(minDist, 2));
-                            tollDetails.add(td);
+                            Map<String, Object> detail = new HashMap<>();
+                            detail.put("id", toll.getOrDefault("id", ""));
+                            detail.put("name", toll.getOrDefault("name", "<unknown>"));
+                            detail.put("state", toll.getOrDefault("state", ""));
+                            detail.put("fee", round(fee, 2));
+                            tollDetails.add(detail);
+                            LOGGER.info("Matched toll plaza '{}' (state={}) dist={}km fee={}",
+                                    toll.getOrDefault("name", "<unknown>"), toll.getOrDefault("state", ""),
+                                    round(minDist, 2), round(fee, 2));
                         }
                     }
                 }
@@ -326,6 +522,7 @@ public class TripExpenseResource {
                 LOGGER.warn("Error while matching toll plazas: {}", e.getMessage());
             }
 
+            // Extras
             double borderExpense = payload.getOrDefault("border_expense", 0) instanceof Number
                     ? ((Number) payload.getOrDefault("border_expense", 0)).doubleValue()
                     : Double.parseDouble(payload.getOrDefault("border_expense", "0").toString());
@@ -339,6 +536,8 @@ public class TripExpenseResource {
                     ? ((Number) payload.getOrDefault("incentive", 0)).doubleValue()
                     : Double.parseDouble(payload.getOrDefault("incentive", "0").toString());
 
+            // compute DA: require kilometers_per_day (always), da_amount_per_day is
+            // optional
             double da = 0.0;
             int journeyDays = 0;
             if (!payload.containsKey("kilometers_per_day") || payload.get("kilometers_per_day") == null
@@ -349,10 +548,12 @@ public class TripExpenseResource {
             }
 
             double kmPerDay = toDouble(payload.get("kilometers_per_day"));
+            // duration rounded up to nearest whole day
             journeyDays = (int) Math.ceil(distanceKm / kmPerDay);
             if (journeyDays < 1)
                 journeyDays = 1;
 
+            // da_amount_per_day is optional; if provided, compute total DA, otherwise 0
             double daPerDay = payload.containsKey("da_amount_per_day") && payload.get("da_amount_per_day") != null
                     ? toDouble(payload.get("da_amount_per_day"))
                     : 0.0;
@@ -372,10 +573,13 @@ public class TripExpenseResource {
             tripSummary.put("to", destination);
             tripSummary.put("vehicle_type", vehicleType);
             tripSummary.put("distance_km", round(distanceKm, 2));
+            // tripSummary.put("duration_hr", round(durationHr * 1.5, 2));
             tripSummary.put("mileage", mileage);
+            // include computed journey days if available
             if (journeyDays > 0) {
                 tripSummary.put("journey_time_days", journeyDays);
             }
+            // include fuel_tank_capacity only if provided by user
             if (payload.containsKey("fuel_tank_capacity")) {
                 tripSummary.put("fuel_tank_capacity", fuelTankCapacity);
             }
@@ -407,10 +611,8 @@ public class TripExpenseResource {
         }
     }
 
-    // --- Ola Maps specific helpers: geocode, reverse geocode, and routing ---
-
     private Map<String, Object> getRoute(String start, String destination) throws Exception {
-        // Use Ola Maps geocoding for start/destination then request directions
+        // Use simple geocoding via ORS geocode endpoint (caching disabled)
         List<Double> startCoord = geocode(start);
         List<Double> destCoord = geocode(destination);
         if (startCoord == null || destCoord == null) {
@@ -419,87 +621,78 @@ public class TripExpenseResource {
         }
 
         var client = HttpClient.newHttpClient();
-        // Use origin/destination query params (lat,lng) per Ola Maps spec. Our coords
-        // are [lon,lat].
-        String origin = String.format(java.util.Locale.ROOT, "%f,%f", startCoord.get(1), startCoord.get(0));
-        String destinationQ = String.format(java.util.Locale.ROOT, "%f,%f", destCoord.get(1), destCoord.get(0));
-        String url = "https://api.olamaps.io/routing/v1/directions?origin="
-                + java.net.URLEncoder.encode(origin, StandardCharsets.UTF_8)
-                + "&destination=" + java.net.URLEncoder.encode(destinationQ, StandardCharsets.UTF_8)
-                + "&overview=full&steps=false&api_key=" + getOlaApiKey();
+        // NOTE: older/newer ORS instances may not accept 'geometry_format' parameter.
+        // Send a minimal directions request and handle geometry in the response (may be
+        // encoded polyline or geojson) — we have decoding fallbacks.
+        String body = "{\"coordinates\":[[" + startCoord.get(0) + "," + startCoord.get(1) + "],[" + destCoord.get(0)
+                + "," + destCoord.get(1) + "]] }";
 
-        LOGGER.info("Ola directions request URL: {}", url.length() > 500 ? url.substring(0, 500) : url);
+        LOGGER.info("ORS directions request body (trimmed 500 chars): {}",
+                body.length() > 500 ? body.substring(0, 500) : body);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
+                .uri(URI.create("https://api.openrouteservice.org/v2/directions/driving-car"))
                 .timeout(Duration.ofSeconds(30))
-                .header("X-Request-Id", java.util.UUID.randomUUID().toString())
-                .header("Accept", "application/json")
-                .POST(HttpRequest.BodyPublishers.noBody())
+                .header("Content-Type", "application/json")
+                .header("Authorization", getOrsApiKey())
+                .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
         HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
-        System.out.println(resp.body());
         String text = resp.body();
         if (resp.statusCode() != 200) {
             lastRouteError = "directions_http_" + resp.statusCode();
-            LOGGER.warn("Ola directions request failed: status={} body={}...", resp.statusCode(),
+            LOGGER.warn("ORS directions request failed: status={} body={}...", resp.statusCode(),
                     resp.body() == null ? "<empty>"
                             : (resp.body().length() > 500 ? resp.body().substring(0, 500) : resp.body()));
             return null;
         }
 
+        // String text = resp.body();
         double distance = 0.0;
         double duration = 0.0;
         List<List<Double>> points = new ArrayList<>();
         try {
             var obj = new org.json.JSONObject(text);
-            // Ola Maps follows a similar structure: routes -> legs -> geometry or polyline
             var routes = obj.getJSONArray("routes");
             if (routes.length() > 0) {
                 var route = routes.getJSONObject(0);
-                // Ola may provide per-leg distances/durations. Sum them if present.
-                double distanceMeters = 0.0;
-                double durationSeconds = 0.0;
+                // Debug: print raw geometry field for inspection
+                try {
+                    if (route.has("geometry")) {
+                        Object rawGeom = route.get("geometry");
+                        String raw = rawGeom == null ? "null" : rawGeom.toString();
+                        LOGGER.info("Raw ORS geometry (trimmed 2000 chars): {}",
+                                raw.length() > 2000 ? raw.substring(0, 2000) : raw);
+                        if (rawGeom instanceof org.json.JSONObject) {
+                            var gtmp = (org.json.JSONObject) rawGeom;
+                            if (gtmp.has("coordinates")) {
+                                var ctmp = gtmp.getJSONArray("coordinates");
+                                LOGGER.info("ORS geometry.coordinates length = {}", ctmp.length());
+                            }
+                        } else if (rawGeom instanceof org.json.JSONArray) {
+                            var ctmp = (org.json.JSONArray) rawGeom;
+                            LOGGER.info("ORS geometry array length = {}", ctmp.length());
+                        }
+                    } else {
+                        LOGGER.warn("ORS route object has no geometry field");
+                    }
+                } catch (Exception e) {
+                    LOGGER.warn("Failed to log raw geometry: {}", e.getMessage());
+                }
                 if (route.has("summary")) {
-                    try {
-                        var summary = route.get("summary");
-                        if (summary instanceof org.json.JSONObject) {
-                            var s = (org.json.JSONObject) summary;
-                            distanceMeters = s.optDouble("distance", 0.0);
-                            durationSeconds = s.optDouble("duration", 0.0);
-                        }
-                    } catch (Exception ignored) {
-                    }
+                    var summary = route.getJSONObject("summary");
+                    distance = summary.optDouble("distance", 0.0) / 1000.0;
+                    duration = summary.optDouble("duration", 0.0) / 3600.0;
                 }
-                if (route.has("legs")) {
-                    try {
-                        var legs = route.getJSONArray("legs");
-                        for (int li = 0; li < legs.length(); li++) {
-                            var leg = legs.getJSONObject(li);
-                            distanceMeters += leg.optDouble("distance", 0.0);
-                            durationSeconds += leg.optDouble("duration", 0.0);
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
-                distance = distanceMeters / 1000.0;
-                duration = durationSeconds / 3600.0;
+                // geometry can be GeoJSON 'geometry' with 'coordinates' as array
                 if (route.has("geometry")) {
-                    Object geom = route.get("geometry");
-                    if (geom instanceof String) {
-                        String encoded = ((String) geom).trim();
-                        // try decode with precision 6 then 5
-                        var p6 = decodePolyline(encoded, 6);
-                        if (!p6.isEmpty()) {
-                            points = p6;
-                        } else {
-                            points = decodePolyline(encoded, 5);
-                        }
-                    } else if (geom instanceof org.json.JSONObject) {
+                    var geom = route.get("geometry");
+                    if (geom instanceof org.json.JSONObject) {
                         var g = (org.json.JSONObject) geom;
                         if (g.has("coordinates")) {
                             var coords = g.getJSONArray("coordinates");
+                            // coordinates may be a nested array for LineString
                             for (int i = 0; i < coords.length(); i++) {
                                 var pair = coords.getJSONArray(i);
                                 double lon = pair.getDouble(0);
@@ -521,109 +714,35 @@ public class TripExpenseResource {
                             p.add(lat);
                             points.add(p);
                         }
-                    }
-                }
-                // fallback: Ola may return an encoded overview polyline as 'overview_polyline'
-                if (points.isEmpty() && route.has("overview_polyline")) {
-                    try {
-                        Object ov = route.get("overview_polyline");
-                        if (ov instanceof String) {
-                            String encoded = ((String) ov).trim();
-                            var p6 = decodePolyline(encoded, 6);
-                            if (!p6.isEmpty()) {
-                                points = p6;
+                    } else if (geom instanceof String) {
+                        // ORS sometimes returns an encoded polyline string when geometry_format
+                        // was not honored or for other reasons. Try to decode as polyline (precision
+                        // 5 or 6) as a fallback.
+                        String encoded = ((String) geom).trim();
+                        LOGGER.info("ORS returned string geometry of length {} - attempting polyline decode",
+                                encoded.length());
+                        try {
+                            List<List<Double>> decoded = decodePolyline(encoded, 5);
+                            if (decoded.isEmpty()) {
+                                // try precision 6
+                                decoded = decodePolyline(encoded, 6);
+                            }
+                            if (!decoded.isEmpty()) {
+                                points.addAll(decoded);
+                                LOGGER.info("Decoded {} points from encoded geometry (polyline fallback)",
+                                        decoded.size());
                             } else {
-                                points = decodePolyline(encoded, 5);
+                                LOGGER.warn("Polyline decoding produced 0 points for encoded geometry");
                             }
+                        } catch (Exception e) {
+                            LOGGER.warn("Error while decoding encoded polyline geometry: {}", e.getMessage());
                         }
-                    } catch (Exception ignored) {
-                    }
-                }
-                // fallback: try to extract coordinates from legs->steps start/end locations
-                if (points.isEmpty() && route.has("legs")) {
-                    try {
-                        var legs = route.getJSONArray("legs");
-                        List<List<Double>> pts = new ArrayList<>();
-                        for (int li = 0; li < legs.length(); li++) {
-                            var leg = legs.getJSONObject(li);
-                            if (leg.has("steps")) {
-                                var steps = leg.getJSONArray("steps");
-                                for (int si = 0; si < steps.length(); si++) {
-                                    var step = steps.getJSONObject(si);
-                                    if (step.has("start_location")) {
-                                        var sl = step.getJSONObject("start_location");
-                                        double lat = sl.optDouble("lat", Double.NaN);
-                                        double lng = sl.optDouble("lng", Double.NaN);
-                                        if (!Double.isNaN(lat) && !Double.isNaN(lng)) {
-                                            pts.add(List.of(lng, lat));
-                                        }
-                                    }
-                                    if (step.has("end_location")) {
-                                        var el = step.getJSONObject("end_location");
-                                        double lat = el.optDouble("lat", Double.NaN);
-                                        double lng = el.optDouble("lng", Double.NaN);
-                                        if (!Double.isNaN(lat) && !Double.isNaN(lng)) {
-                                            pts.add(List.of(lng, lat));
-                                        }
-                                    }
-                                }
-                            } else {
-                                // fall back to leg start/end
-                                if (leg.has("start_location")) {
-                                    var sl = leg.getJSONObject("start_location");
-                                    double lat = sl.optDouble("lat", Double.NaN);
-                                    double lng = sl.optDouble("lng", Double.NaN);
-                                    if (!Double.isNaN(lat) && !Double.isNaN(lng)) {
-                                        pts.add(List.of(lng, lat));
-                                    }
-                                }
-                                if (leg.has("end_location")) {
-                                    var el = leg.getJSONObject("end_location");
-                                    double lat = el.optDouble("lat", Double.NaN);
-                                    double lng = el.optDouble("lng", Double.NaN);
-                                    if (!Double.isNaN(lat) && !Double.isNaN(lng)) {
-                                        pts.add(List.of(lng, lat));
-                                    }
-                                }
-                            }
-                        }
-                        // dedupe sequential duplicates
-                        List<List<Double>> dedup = new ArrayList<>();
-                        List<Double> prev = null;
-                        for (var p : pts) {
-                            if (prev == null || Math.abs(prev.get(0) - p.get(0)) > 1e-9
-                                    || Math.abs(prev.get(1) - p.get(1)) > 1e-9) {
-                                dedup.add(p);
-                                prev = p;
-                            }
-                        }
-                        points.addAll(dedup);
-                    } catch (Exception ignored) {
                     }
                 }
             }
         } catch (Exception e) {
             lastRouteError = "directions_parse_error: " + e.getMessage();
-            LOGGER.warn("Failed to parse Ola directions response: {}", e.getMessage());
-        }
-
-        // If we found no points, log raw response for debugging
-        if (points.isEmpty()) {
-            LOGGER.warn("Parsed route had no points. rawResponse={}", text == null ? "<empty>" : text);
-            try {
-                var rawObj = new org.json.JSONObject(text == null ? "{}" : text);
-                LOGGER.warn("Full route JSON for debugging: {}", rawObj.toString(2));
-            } catch (Exception ignored) {
-            }
-        }
-
-        if (points.isEmpty()) {
-            LOGGER.warn("Parsed route had no points. rawResponse={}", text == null ? "<empty>" : text);
-            try {
-                var rawObj = new org.json.JSONObject(text == null ? "{}" : text);
-                LOGGER.warn("Full route JSON for debugging: {}", rawObj.toString(2));
-            } catch (Exception ignored) {
-            }
+            LOGGER.warn("Failed to parse ORS directions response: {}", e.getMessage());
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -636,18 +755,18 @@ public class TripExpenseResource {
     private List<Double> geocode(String text) throws Exception {
         var client = HttpClient.newHttpClient();
         String q = java.net.URLEncoder.encode(text, StandardCharsets.UTF_8);
-        String url = "https://api.olamaps.io/places/v1/geocode?input=" + q + "&size=1&api_key=" + getOlaApiKey();
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
+                .uri(URI.create("https://api.openrouteservice.org/geocode/search?text=" + q + "&size=1"))
                 .timeout(Duration.ofSeconds(20))
+                .header("Authorization", getOrsApiKey())
                 .GET()
                 .build();
         HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
         if (resp.statusCode() != 200)
             return null;
         var obj = new org.json.JSONObject(resp.body());
-        var features = obj.optJSONArray("features");
-        if (features == null || features.length() == 0)
+        var features = obj.getJSONArray("features");
+        if (features.length() == 0)
             return null;
         var feat = features.getJSONObject(0);
         var geom = feat.getJSONObject("geometry");
@@ -660,15 +779,19 @@ public class TripExpenseResource {
         return c;
     }
 
+    /**
+     * Reverse geocode a lat,lon point using ORS and return nearest routable
+     * [lon,lat]
+     * or null if none found.
+     */
     private List<Double> reverseGeocodePoint(Double lat, Double lon) {
         try {
             var client = HttpClient.newHttpClient();
             String q = String.format(java.util.Locale.ROOT, "%f,%f", lat, lon);
-            String url = "https://api.olamaps.io/places/v1/reverse-geocode?location=" + q + "&size=1&api_key="
-                    + getOlaApiKey();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
+                    .uri(URI.create("https://api.openrouteservice.org/geocode/reverse?point=" + q + "&size=1"))
                     .timeout(Duration.ofSeconds(10))
+                    .header("Authorization", getOrsApiKey())
                     .GET()
                     .build();
             HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -688,6 +811,7 @@ public class TripExpenseResource {
             var coords = geom.getJSONArray("coordinates");
             double rlon = coords.getDouble(0);
             double rlat = coords.getDouble(1);
+            // Return as [lon, lat]
             return List.of(rlon, rlat);
         } catch (Exception e) {
             LOGGER.warn("reverseGeocodePoint failed: {}", e.getMessage());
@@ -695,51 +819,28 @@ public class TripExpenseResource {
         }
     }
 
-    /**
-     * Call Ola Maps snapToRoad API to align start and dest points to the nearest
-     * routable points.
-     * Returns a list of snapped [lon, lat] points (first..last) or null on failure.
-     */
-    private List<List<Double>> snapToRoadPoints(List<Double> startCoord, List<Double> destCoord) {
-        try {
-            if (startCoord == null || destCoord == null)
-                return null;
-            // startCoord/destCoord are [lon, lat], but SnapToRoad expects lat,lng
-            String p1 = String.format(java.util.Locale.ROOT, "%f,%f", startCoord.get(1), startCoord.get(0));
-            String p2 = String.format(java.util.Locale.ROOT, "%f,%f", destCoord.get(1), destCoord.get(0));
-            String pointsParam = java.net.URLEncoder.encode(p1 + "|" + p2, StandardCharsets.UTF_8);
-            String url = "https://api.olamaps.io/routing/v1/snapToRoad?points=" + pointsParam + "&api_key="
-                    + getOlaApiKey();
-            var client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(20))
-                    .GET()
-                    .build();
-            HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() != 200)
-                return null;
-            var obj = new org.json.JSONObject(resp.body());
-            var snapped = obj.optJSONArray("snapped_points");
-            if (snapped == null || snapped.length() == 0)
-                return null;
-            List<List<Double>> out = new ArrayList<>();
-            for (int i = 0; i < snapped.length(); i++) {
-                var sp = snapped.getJSONObject(i);
-                var loc = sp.getJSONObject("location");
-                double lat = loc.optDouble("lat", Double.NaN);
-                double lng = loc.optDouble("lng", Double.NaN);
-                if (!Double.isNaN(lat) && !Double.isNaN(lng)) {
-                    out.add(List.of(lng, lat));
-                }
-            }
-            return out;
-        } catch (Exception e) {
-            LOGGER.warn("snapToRoadPoints failed: {}", e.getMessage());
-            return null;
-        }
-    }
+    // private List<Map<String, Object>> loadJsonListResource(String path) {
+    // try (InputStream is = getClass().getClassLoader().getResourceAsStream(path))
+    // {
+    // if (is == null)
+    // return List.of();
+    // String text = new BufferedReader(new InputStreamReader(is,
+    // StandardCharsets.UTF_8)).lines()
+    // .collect(Collectors.joining("\n"));
+    // var arr = new org.json.JSONArray(text);
+    // List<Map<String, Object>> list = new ArrayList<>();
+    // for (int i = 0; i < arr.length(); i++) {
+    // var o = arr.getJSONObject(i);
+    // Map<String, Object> map = o.toMap();
+    // list.add(map);
+    // }
+    // return list;
+    // } catch (IOException e) {
+    // return List.of();
+    // }
+    // }
 
+    // convert various numeric object representations to double
     private double toDouble(Object o) {
         if (o == null)
             return 0.0;
@@ -773,6 +874,7 @@ public class TripExpenseResource {
                     list.add(o.toMap());
                 }
             } else {
+                // maybe file is an array
                 try {
                     var arr = new org.json.JSONArray(text);
                     for (int i = 0; i < arr.length(); i++) {
@@ -780,6 +882,7 @@ public class TripExpenseResource {
                         list.add(o.toMap());
                     }
                 } catch (Exception e) {
+                    // unknown format
                 }
             }
             return list;
@@ -811,6 +914,7 @@ public class TripExpenseResource {
                     m.put("state", state);
                     m.put("city", city);
                     m.put("price", price);
+                    // If the data now contains explicit lat/lng for cities, include them
                     if (cityObj.has("location") && cityObj.get("location") instanceof org.json.JSONObject) {
                         var loc = cityObj.getJSONObject("location");
                         if (loc.has("lat") && loc.has("lng")) {
@@ -821,6 +925,7 @@ public class TripExpenseResource {
                             m.put("lon", loc.getDouble("lon"));
                         }
                     }
+                    // fallback: keep human-readable city name
                     m.put("location", city);
                     list.add(m);
                 }
@@ -831,9 +936,40 @@ public class TripExpenseResource {
         }
     }
 
-    // NOTE: cumulative distance and closest-point helpers removed because they
-    // were not referenced by the current trip expense flow. Re-add if needed
-    // in future enhancements.
+    // geocoding cache removed — geocode() called directly to force fresh data
+
+    // private List<Double> computeCumulativeDistances(List<List<Double>> points) {
+    // List<Double> out = new ArrayList<>();
+    // double cum = 0.0;
+    // if (points.isEmpty())
+    // return List.of(0.0);
+    // out.add(0.0);
+    // for (int i = 1; i < points.size(); i++) {
+    // var p1 = points.get(i - 1);
+    // var p2 = points.get(i);
+    // double lon1 = p1.get(0), lat1 = p1.get(1);
+    // double lon2 = p2.get(0), lat2 = p2.get(1);
+    // double d = haversine(lat1, lon1, lat2, lon2);
+    // cum += d;
+    // out.add(cum);
+    // }
+    // return out;
+    // }
+
+    // private int closestPointIndex(List<List<Double>> points, double lat, double
+    // lon) {
+    // double min = Double.MAX_VALUE;
+    // int idx = 0;
+    // for (int i = 0; i < points.size(); i++) {
+    // var p = points.get(i);
+    // double d = haversine(lat, lon, p.get(1), p.get(0));
+    // if (d < min) {
+    // min = d;
+    // idx = i;
+    // }
+    // }
+    // return idx;
+    // }
 
     private String mapVehicleType(String t) {
         if (t == null)
@@ -876,6 +1012,10 @@ public class TripExpenseResource {
         return Math.round(v * scale) / scale;
     }
 
+    /**
+     * Extract toll fee for a given toll record and vehicle key.
+     * Handles nested shapes like: { fees: { car: { single: 100 } } }
+     */
     private double extractTollFee(Map<String, Object> toll, String tollKey) {
         if (toll == null)
             return 0.0;
@@ -895,6 +1035,7 @@ public class TripExpenseResource {
                         } catch (Exception ignored) {
                         }
                     }
+                    // fallback: check common keys
                     for (String k : new String[] { "single", "singleFare", "fare", "amount" }) {
                         Object o = veh.get(k);
                         if (o instanceof Number)
@@ -907,6 +1048,7 @@ public class TripExpenseResource {
                         }
                     }
                 }
+                // if fees contains tollKey as a number directly
                 Object direct = fees.get(tollKey);
                 if (direct instanceof Number)
                     return ((Number) direct).doubleValue();
@@ -918,6 +1060,7 @@ public class TripExpenseResource {
                 }
             }
 
+            // older datasets may have fee at top level under vehicle key
             Object top = toll.get(tollKey);
             if (top instanceof Number)
                 return ((Number) top).doubleValue();
@@ -928,10 +1071,15 @@ public class TripExpenseResource {
                 }
             }
         } catch (Exception e) {
+            // ignore and return 0.0
         }
         return 0.0;
     }
 
+    /**
+     * Decode an encoded polyline string (Google polyline / ORS encoded) into a list
+     * of [lon, lat] points. Precision is typically 5 (Google) or 6.
+     */
     private List<List<Double>> decodePolyline(String encoded, int precision) {
         List<List<Double>> path = new ArrayList<>();
         if (encoded == null || encoded.isEmpty())
@@ -942,6 +1090,7 @@ public class TripExpenseResource {
         int shift, result, b;
         int factor = (int) Math.pow(10, precision);
         while (index < len) {
+            // decode latitude
             shift = 0;
             result = 0;
             do {
@@ -952,6 +1101,7 @@ public class TripExpenseResource {
             int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
             lat += dlat;
 
+            // decode longitude
             shift = 0;
             result = 0;
             do {
@@ -965,6 +1115,7 @@ public class TripExpenseResource {
             double latD = ((double) lat) / factor;
             double lngD = ((double) lng) / factor;
             List<Double> p = new ArrayList<>();
+            // store as lon, lat to match other code
             p.add(lngD);
             p.add(latD);
             path.add(p);
@@ -972,6 +1123,11 @@ public class TripExpenseResource {
         return path;
     }
 
+    /**
+     * Parse a coordinate input which may be a string like "lat,lon", a list [lat,
+     * lon]
+     * or a map with lat/lon keys. Returns a list [lon, lat] as expected by ORS.
+     */
     private List<Double> parseCoord(Object input) {
         if (input == null)
             return null;
@@ -979,9 +1135,12 @@ public class TripExpenseResource {
             if (input instanceof List<?> lst && lst.size() >= 2) {
                 double a = toDouble(lst.get(0));
                 double b = toDouble(lst.get(1));
+                // if a looks like latitude (-90..90) and b looks like longitude (-180..180)
                 if (Math.abs(a) <= 90 && Math.abs(b) <= 180) {
+                    // input likely [lat, lon] -> return [lon, lat]
                     return List.of(b, a);
                 } else {
+                    // fallback: return as [lon, lat]
                     return List.of(a, b);
                 }
             }
@@ -1017,6 +1176,9 @@ public class TripExpenseResource {
         return null;
     }
 
+    /**
+     * Request route using explicit coordinates (each as [lon, lat]).
+     */
     private Map<String, Object> getRouteUsingCoords(List<Double> startCoord, List<Double> destCoord) throws Exception {
         if (startCoord == null || destCoord == null || startCoord.size() < 2 || destCoord.size() < 2) {
             lastRouteError = "invalid_coords";
@@ -1024,94 +1186,60 @@ public class TripExpenseResource {
         }
 
         var client = HttpClient.newHttpClient();
-        String origin = String.format(java.util.Locale.ROOT, "%f,%f", startCoord.get(1), startCoord.get(0));
-        String destinationQ = String.format(java.util.Locale.ROOT, "%f,%f", destCoord.get(1), destCoord.get(0));
-        String url = "https://api.olamaps.io/routing/v1/directions?origin="
-                + java.net.URLEncoder.encode(origin, StandardCharsets.UTF_8)
-                + "&destination=" + java.net.URLEncoder.encode(destinationQ, StandardCharsets.UTF_8)
-                + "&overview=full&steps=false&api_key=" + getOlaApiKey();
+        String body = "{\"coordinates\":[[" + startCoord.get(0) + "," + startCoord.get(1) + "],[" + destCoord.get(0)
+                + "," + destCoord.get(1) + "]] }";
 
-        LOGGER.info("Ola directions request URL (coords): {}", url.length() > 500 ? url.substring(0, 500) : url);
+        LOGGER.info("ORS directions request body (coords) (trimmed 500 chars): {}",
+                body.length() > 500 ? body.substring(0, 500) : body);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
+                .uri(URI.create("https://api.openrouteservice.org/v2/directions/driving-car"))
                 .timeout(Duration.ofSeconds(30))
-                .header("X-Request-Id", java.util.UUID.randomUUID().toString())
-                .header("Accept", "application/json")
-                .POST(HttpRequest.BodyPublishers.noBody())
+                .header("Content-Type", "application/json")
+                .header("Authorization", getOrsApiKey())
+                .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
         HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
         String text = resp.body();
         if (resp.statusCode() != 200) {
+            // If ORS returned a routable-point error (common when point is off-road),
+            // try snapping the points via reverse geocode and retry once.
             String bodyText = resp.body() == null ? "" : resp.body();
-            LOGGER.warn("Ola directions request failed: status={} body={}...", resp.statusCode(),
+            LOGGER.warn("ORS directions request failed: status={} body={}...", resp.statusCode(),
                     bodyText.length() > 500 ? bodyText.substring(0, 500) : bodyText);
-            // Try snapping points to roads via SnapToRoad API when route not found
-            if (resp.statusCode() == 404 || bodyText.contains("Route Not Found")
-                    || bodyText.contains("Could not find routable point")) {
-                try {
-                    List<List<Double>> snapped = snapToRoadPoints(startCoord, destCoord);
-                    if (snapped != null && snapped.size() >= 2) {
-                        var snappedStart = snapped.get(0);
-                        var snappedDest = snapped.get(snapped.size() - 1);
-                        LOGGER.info("SnapToRoad returned snappedStart={} snappedDest={}", snappedStart, snappedDest);
-                        String origin2 = String.format(java.util.Locale.ROOT, "%f,%f", snappedStart.get(0),
-                                snappedStart.get(1));
-                        String destination2 = String.format(java.util.Locale.ROOT, "%f,%f", snappedDest.get(0),
-                                snappedDest.get(1));
-                        String url2 = "https://api.olamaps.io/routing/v1/directions?origin="
-                                + java.net.URLEncoder.encode(origin2, StandardCharsets.UTF_8)
-                                + "&destination=" + java.net.URLEncoder.encode(destination2, StandardCharsets.UTF_8)
-                                + "&overview=full&steps=false&api_key=" + getOlaApiKey();
-                        HttpRequest request2 = HttpRequest.newBuilder()
-                                .uri(URI.create(url2))
-                                .timeout(Duration.ofSeconds(30))
-                                .header("X-Request-Id", java.util.UUID.randomUUID().toString())
-                                .header("Accept", "application/json")
-                                .POST(HttpRequest.BodyPublishers.noBody())
-                                .build();
-                        HttpResponse<String> resp2 = client.send(request2, HttpResponse.BodyHandlers.ofString());
+            // Detect common ORS code 2010 or message text
+            if (resp.statusCode() == 404 && bodyText.contains("Could not find routable point")) {
+                // attempt to snap start and dest using reverse geocode
+                List<Double> snappedStart = reverseGeocodePoint(startCoord.get(1), startCoord.get(0));
+                List<Double> snappedDest = reverseGeocodePoint(destCoord.get(1), destCoord.get(0));
+                if (snappedStart != null && snappedDest != null) {
+                    LOGGER.info("Snapped coords: start={} dest={}", snappedStart, snappedDest);
+                    // rebuild request with snapped coords
+                    String body2 = "{\"coordinates\":[[" + snappedStart.get(0) + "," + snappedStart.get(1) + "],["
+                            + snappedDest.get(0)
+                            + "," + snappedDest.get(1) + "]] }";
+                    HttpRequest req2 = HttpRequest.newBuilder()
+                            .uri(URI.create("https://api.openrouteservice.org/v2/directions/driving-car"))
+                            .timeout(Duration.ofSeconds(30))
+                            .header("Content-Type", "application/json")
+                            .header("Authorization", getOrsApiKey())
+                            .POST(HttpRequest.BodyPublishers.ofString(body2))
+                            .build();
+                    HttpResponse<String> resp2 = client.send(req2, HttpResponse.BodyHandlers.ofString());
+                    if (resp2.statusCode() == 200) {
+                        // parse resp2 as usual
                         text = resp2.body();
-                        if (resp2.statusCode() != 200) {
-                            lastRouteError = "directions_http_" + resp2.statusCode();
-                            return null;
-                        }
                     } else {
-                        // fallback: attempt reverse geocode as previous behavior
-                        List<Double> snappedStart = reverseGeocodePoint(startCoord.get(1), startCoord.get(0));
-                        List<Double> snappedDest = reverseGeocodePoint(destCoord.get(1), destCoord.get(0));
-                        if (snappedStart != null && snappedDest != null) {
-                            LOGGER.info("Snapped coords (reverse geocode): start={} dest={}", snappedStart,
-                                    snappedDest);
-                            String origin2 = String.format(java.util.Locale.ROOT, "%f,%f", snappedStart.get(0),
-                                    snappedStart.get(1));
-                            String destination2 = String.format(java.util.Locale.ROOT, "%f,%f", snappedDest.get(0),
-                                    snappedDest.get(1));
-                            String url2 = "https://api.olamaps.io/routing/v1/directions?origin="
-                                    + java.net.URLEncoder.encode(origin2, StandardCharsets.UTF_8)
-                                    + "&destination=" + java.net.URLEncoder.encode(destination2, StandardCharsets.UTF_8)
-                                    + "&overview=full&steps=false&api_key=" + getOlaApiKey();
-                            HttpRequest request2 = HttpRequest.newBuilder()
-                                    .uri(URI.create(url2))
-                                    .timeout(Duration.ofSeconds(30))
-                                    .header("X-Request-Id", java.util.UUID.randomUUID().toString())
-                                    .header("Accept", "application/json")
-                                    .POST(HttpRequest.BodyPublishers.noBody())
-                                    .build();
-                            HttpResponse<String> resp2 = client.send(request2, HttpResponse.BodyHandlers.ofString());
-                            text = resp2.body();
-                            if (resp2.statusCode() != 200) {
-                                lastRouteError = "directions_http_" + resp2.statusCode();
-                                return null;
-                            }
-                        } else {
-                            lastRouteError = "could_not_snap_points";
-                            return null;
-                        }
+                        lastRouteError = "directions_http_" + resp2.statusCode();
+                        LOGGER.warn("ORS retry after snap failed: status={} body={}...", resp2.statusCode(),
+                                resp2.body() == null ? "<empty>"
+                                        : (resp2.body().length() > 500 ? resp2.body().substring(0, 500)
+                                                : resp2.body()));
+                        return null;
                     }
-                } catch (Exception ex) {
-                    lastRouteError = "directions_http_" + resp.statusCode();
+                } else {
+                    lastRouteError = "routable_point_not_found_and_snap_failed";
                     return null;
                 }
             } else {
@@ -1125,43 +1253,17 @@ public class TripExpenseResource {
         List<List<Double>> points = new ArrayList<>();
         try {
             var obj = new org.json.JSONObject(text);
-            var routes = obj.optJSONArray("routes");
-            if (routes != null && routes.length() > 0) {
+            var routes = obj.getJSONArray("routes");
+            if (routes.length() > 0) {
                 var route = routes.getJSONObject(0);
-
-                // If summary object exists use it, otherwise sum legs distances/durations
-                if (route.has("summary") && route.opt("summary") instanceof org.json.JSONObject) {
+                if (route.has("summary")) {
                     var summary = route.getJSONObject("summary");
                     distance = summary.optDouble("distance", 0.0) / 1000.0;
                     duration = summary.optDouble("duration", 0.0) / 3600.0;
-                } else if (route.has("legs")) {
-                    try {
-                        var legs = route.getJSONArray("legs");
-                        double distMeters = 0.0;
-                        double durSeconds = 0.0;
-                        for (int li = 0; li < legs.length(); li++) {
-                            var leg = legs.getJSONObject(li);
-                            distMeters += leg.optDouble("distance", 0.0);
-                            durSeconds += leg.optDouble("duration", 0.0);
-                        }
-                        distance = distMeters / 1000.0;
-                        duration = durSeconds / 3600.0;
-                    } catch (Exception ignored) {
-                    }
                 }
-
-                // geometry can be string (encoded polyline), object (GeoJSON) or array
                 if (route.has("geometry")) {
-                    Object geom = route.get("geometry");
-                    if (geom instanceof String) {
-                        String encoded = ((String) geom).trim();
-                        var p6 = decodePolyline(encoded, 6);
-                        if (!p6.isEmpty()) {
-                            points = p6;
-                        } else {
-                            points = decodePolyline(encoded, 5);
-                        }
-                    } else if (geom instanceof org.json.JSONObject) {
+                    var geom = route.get("geometry");
+                    if (geom instanceof org.json.JSONObject) {
                         var g = (org.json.JSONObject) geom;
                         if (g.has("coordinates")) {
                             var coords = g.getJSONArray("coordinates");
@@ -1169,7 +1271,10 @@ public class TripExpenseResource {
                                 var pair = coords.getJSONArray(i);
                                 double lon = pair.getDouble(0);
                                 double lat = pair.getDouble(1);
-                                points.add(List.of(lon, lat));
+                                List<Double> p = new ArrayList<>();
+                                p.add(lon);
+                                p.add(lat);
+                                points.add(p);
                             }
                         }
                     } else if (geom instanceof org.json.JSONArray) {
@@ -1178,135 +1283,30 @@ public class TripExpenseResource {
                             var pair = coords.getJSONArray(i);
                             double lon = pair.getDouble(0);
                             double lat = pair.getDouble(1);
-                            points.add(List.of(lon, lat));
+                            List<Double> p = new ArrayList<>();
+                            p.add(lon);
+                            p.add(lat);
+                            points.add(p);
                         }
-                    }
-                }
-
-                // fallback: overview_polyline might be a string or an object with 'points'
-                if (points.isEmpty() && route.has("overview_polyline")) {
-                    try {
-                        Object ov = route.get("overview_polyline");
-                        String encoded = null;
-                        if (ov instanceof String) {
-                            encoded = ((String) ov).trim();
-                        } else if (ov instanceof org.json.JSONObject) {
-                            var ovObj = (org.json.JSONObject) ov;
-                            if (ovObj.has("points")) {
-                                encoded = ovObj.optString("points", "").trim();
+                    } else if (geom instanceof String) {
+                        String encoded = ((String) geom).trim();
+                        try {
+                            List<List<Double>> decoded = decodePolyline(encoded, 5);
+                            if (decoded.isEmpty()) {
+                                decoded = decodePolyline(encoded, 6);
                             }
+                            if (!decoded.isEmpty()) {
+                                points.addAll(decoded);
+                            }
+                        } catch (Exception e) {
+                            LOGGER.warn("Error while decoding encoded polyline geometry: {}", e.getMessage());
                         }
-                        if (encoded != null && !encoded.isEmpty()) {
-                            var p5 = decodePolyline(encoded, 5);
-                            if (!p5.isEmpty()) {
-                                points = p5;
-                            } else {
-                                points = decodePolyline(encoded, 6);
-                            }
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
-
-                // fallback: leg-level polyline (string or object)
-                if (points.isEmpty() && route.has("legs")) {
-                    try {
-                        var legs = route.getJSONArray("legs");
-                        for (int li = 0; li < legs.length(); li++) {
-                            var leg = legs.getJSONObject(li);
-                            // first try leg.polyline as string
-                            if (leg.has("polyline")) {
-                                Object lp = leg.get("polyline");
-                                String encoded = null;
-                                if (lp instanceof String) {
-                                    encoded = ((String) lp).trim();
-                                } else if (lp instanceof org.json.JSONObject) {
-                                    encoded = ((org.json.JSONObject) lp).optString("points", "").trim();
-                                }
-                                if (encoded != null && !encoded.isEmpty()) {
-                                    var seg = decodePolyline(encoded, 5);
-                                    if (seg.isEmpty())
-                                        seg = decodePolyline(encoded, 6);
-                                    if (!seg.isEmpty()) {
-                                        points.addAll(seg);
-                                    }
-                                }
-                            }
-
-                            // try steps start/end locations
-                            if (leg.has("steps")) {
-                                var steps = leg.getJSONArray("steps");
-                                for (int si = 0; si < steps.length(); si++) {
-                                    var step = steps.getJSONObject(si);
-                                    if (step.has("start_location")) {
-                                        var sl = step.getJSONObject("start_location");
-                                        double lat = sl.optDouble("lat", Double.NaN);
-                                        double lng = sl.optDouble("lng", Double.NaN);
-                                        if (!Double.isNaN(lat) && !Double.isNaN(lng)) {
-                                            points.add(List.of(lng, lat));
-                                        }
-                                    }
-                                    if (step.has("end_location")) {
-                                        var el = step.getJSONObject("end_location");
-                                        double lat = el.optDouble("lat", Double.NaN);
-                                        double lng = el.optDouble("lng", Double.NaN);
-                                        if (!Double.isNaN(lat) && !Double.isNaN(lng)) {
-                                            points.add(List.of(lng, lat));
-                                        }
-                                    }
-                                }
-                            } else {
-                                // fall back to leg start/end
-                                if (leg.has("start_location")) {
-                                    var sl = leg.getJSONObject("start_location");
-                                    double lat = sl.optDouble("lat", Double.NaN);
-                                    double lng = sl.optDouble("lng", Double.NaN);
-                                    if (!Double.isNaN(lat) && !Double.isNaN(lng)) {
-                                        points.add(List.of(lng, lat));
-                                    }
-                                }
-                                if (leg.has("end_location")) {
-                                    var el = leg.getJSONObject("end_location");
-                                    double lat = el.optDouble("lat", Double.NaN);
-                                    double lng = el.optDouble("lng", Double.NaN);
-                                    if (!Double.isNaN(lat) && !Double.isNaN(lng)) {
-                                        points.add(List.of(lng, lat));
-                                    }
-                                }
-                            }
-                        }
-                        // dedupe sequential duplicates
-                        if (!points.isEmpty()) {
-                            List<List<Double>> dedup = new ArrayList<>();
-                            List<Double> prev = null;
-                            for (var p : points) {
-                                if (prev == null || Math.abs(prev.get(0) - p.get(0)) > 1e-9
-                                        || Math.abs(prev.get(1) - p.get(1)) > 1e-9) {
-                                    dedup.add(p);
-                                    prev = p;
-                                }
-                            }
-                            points = dedup;
-                        }
-                    } catch (Exception ignored) {
                     }
                 }
             }
         } catch (Exception e) {
             lastRouteError = "directions_parse_error: " + e.getMessage();
-            LOGGER.warn("Failed to parse Ola directions response: {}", e.getMessage());
-        }
-
-        // If we found no points, log raw response for debugging (pretty-print if
-        // possible)
-        if (points.isEmpty()) {
-            LOGGER.warn("Parsed route had no points (coords path). rawResponse={}",
-                    text == null ? "<empty>" : (text.length() > 500 ? text.substring(0, 500) : text));
-            try {
-                var rawObj = new org.json.JSONObject(text == null ? "{}" : text);
-                LOGGER.warn("Full route JSON (coords path) for debugging: {}", rawObj.toString(2));
-            } catch (Exception ignored) {
-            }
+            LOGGER.warn("Failed to parse ORS directions response: {}", e.getMessage());
         }
 
         Map<String, Object> result = new HashMap<>();
