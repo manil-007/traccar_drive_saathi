@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd">
+
+    <changeSet id="changelog-6.15.0" author="traccar">
+
+        <createTable tableName="tc_validation_log">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="userid" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="validationtype" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="number" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="validationdate" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableName="tc_validation_log"
+                baseColumnNames="userid"
+                constraintName="fk_validation_log_userid"
+                referencedTableName="tc_users"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+
+        <createIndex indexName="idx_validation_log_userid" tableName="tc_validation_log">
+            <column name="userid"/>
+        </createIndex>
+
+        <createIndex indexName="idx_validation_log_date" tableName="tc_validation_log">
+            <column name="validationdate"/>
+        </createIndex>
+
+        <createIndex indexName="idx_validation_log_type" tableName="tc_validation_log">
+            <column name="validationtype"/>
+        </createIndex>
+
+    </changeSet>
+
+</databaseChangeLog>

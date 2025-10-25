@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+        logicalFilePath="changelog-6.13.1">
+
+  <changeSet author="copilot" id="changelog-6.13.1-1">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="tc_driving_license"/>
+    </preConditions>
+
+    <addColumn tableName="tc_driving_license">
+      <column name="rto" type="VARCHAR(255)"/>
+      <column name="state" type="VARCHAR(255)"/>
+      <column name="validfrom" type="DATE"/>
+      <column name="validupto" type="DATE"/>
+      <column name="bloodgroup" type="VARCHAR(20)"/>
+    </addColumn>
+
+    <createIndex tableName="tc_driving_license" indexName="idx_driving_license_validupto">
+      <column name="validupto"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>

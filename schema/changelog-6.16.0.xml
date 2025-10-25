@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd">
+
+    <changeSet id="changelog-6.16.0" author="traccar">
+
+        <createTable tableName="tc_transporters">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="userid" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="createdat" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updatedat" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableName="tc_transporters"
+                baseColumnNames="userid"
+                constraintName="fk_transporters_userid"
+                referencedTableName="tc_users"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+
+        <addUniqueConstraint tableName="tc_transporters" columnNames="userid,name" constraintName="uk_transporters_user_name"/>
+
+        <createIndex indexName="idx_transporters_userid" tableName="tc_transporters">
+            <column name="userid"/>
+        </createIndex>
+
+        <createIndex indexName="idx_transporters_name" tableName="tc_transporters">
+            <column name="name"/>
+        </createIndex>
+
+    </changeSet>
+
+</databaseChangeLog>

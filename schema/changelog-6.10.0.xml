@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+        logicalFilePath="changelog-6.10.0">
+
+  <changeSet author="author" id="changelog-6.10.0-1">
+
+    <!-- Add vehicleValidationAccess column to tc_users table -->
+    <addColumn tableName="tc_users">
+      <column name="vehiclevalidationaccess" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+
+  </changeSet>
+
+  <changeSet author="author" id="changelog-6.10.0-2">
+
+    <!-- Create tc_vehicle_validity table for storing RC data -->
+    <createTable tableName="tc_vehicle_validity">
+      <column name="id" type="INT" autoIncrement="true">
+        <constraints nullable="false" primaryKey="true" primaryKeyName="pk_tc_vehicle_validity"/>
+      </column>
+      
+      <!-- Primary identifiers -->
+      <column name="licenseplate" type="VARCHAR(50)">
+        <constraints nullable="false" unique="true"/>
+      </column>
+      <column name="chassisnumber" type="VARCHAR(50)"/>
+      <column name="enginenumber" type="VARCHAR(50)"/>
+      
+      <!-- Owner details -->
+      <column name="ownername" type="VARCHAR(255)"/>
+      <column name="fathername" type="VARCHAR(255)"/>
+      <column name="presentaddress" type="VARCHAR(1024)"/>
+      <column name="permanentaddress" type="VARCHAR(1024)"/>
+      
+      <!-- Finance details -->
+      <column name="isfinanced" type="VARCHAR(50)"/>
+      <column name="financer" type="VARCHAR(255)"/>
+      
+      <!-- Insurance details -->
+      <column name="insurancecompany" type="VARCHAR(255)"/>
+      <column name="insurancepolicy" type="VARCHAR(100)"/>
+      <column name="insuranceexpiry" type="DATE"/>
+      
+      <!-- Vehicle details -->
+      <column name="vehicleclass" type="VARCHAR(100)"/>
+      <column name="registrationdate" type="DATE"/>
+      <column name="vehicleage" type="VARCHAR(50)"/>
+      <column name="fueltype" type="VARCHAR(50)"/>
+      <column name="brandname" type="VARCHAR(255)"/>
+      <column name="brandmodel" type="VARCHAR(255)"/>
+      <column name="cubiccapacity" type="VARCHAR(50)"/>
+      <column name="grossweight" type="VARCHAR(50)"/>
+      <column name="cylinders" type="VARCHAR(10)"/>
+      <column name="color" type="VARCHAR(50)"/>
+      <column name="norms" type="VARCHAR(100)"/>
+      <column name="nocdetails" type="VARCHAR(255)"/>
+      <column name="seatingcapacity" type="VARCHAR(10)"/>
+      <column name="ownercount" type="VARCHAR(10)"/>
+      
+      <!-- PUCC details -->
+      <column name="puccupto" type="DATE"/>
+      <column name="puccnumber" type="VARCHAR(100)"/>
+      
+      <!-- Tax details -->
+      <column name="taxupto" type="DATE"/>
+      <column name="taxpaidupto" type="VARCHAR(50)"/>
+      
+      <!-- Permit details -->
+      <column name="permitnumber" type="VARCHAR(100)"/>
+      <column name="permitissuedate" type="DATE"/>
+      <column name="permitvalidfrom" type="DATE"/>
+      <column name="permitvalidupto" type="DATE"/>
+      <column name="permittype" type="VARCHAR(100)"/>
+      <column name="nationalpermitnumber" type="VARCHAR(100)"/>
+      <column name="nationalpermitupto" type="DATE"/>
+      <column name="nationalpermitissuedby" type="VARCHAR(255)"/>
+      
+      <!-- RC status -->
+      <column name="rcstatus" type="VARCHAR(50)"/>
+      
+      <!-- Additional vehicle information -->
+      <column name="category" type="VARCHAR(50)"/>
+      <column name="bodytype" type="VARCHAR(100)"/>
+      <column name="fitupto" type="DATE"/>
+      <column name="manufacturingdate" type="VARCHAR(50)"/>
+      <column name="manufacturingdateformatted" type="VARCHAR(50)"/>
+      <column name="rtoname" type="VARCHAR(255)"/>
+      <column name="latestby" type="VARCHAR(255)"/>
+      <column name="sleepercapacity" type="VARCHAR(10)"/>
+      <column name="standingcapacity" type="VARCHAR(10)"/>
+      <column name="wheelbase" type="VARCHAR(50)"/>
+      <column name="unladenweight" type="VARCHAR(50)"/>
+      
+      <!-- Metadata -->
+      <column name="createdat" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+      <column name="updatedat" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <createIndex tableName="tc_vehicle_validity" indexName="idx_vehicle_validity_license">
+      <column name="licenseplate"/>
+    </createIndex>
+
+  </changeSet>
+
+</databaseChangeLog>
