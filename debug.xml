@@ -46,4 +46,9 @@
     <entry key="vehicle.rc.api.url">https://uat.apiclub.in/api/v1/rc_info</entry>
     <entry key="vehicle.rc.api.key">apclb_6UvEDOwM6phrBJqYmEPRZqirf9f4463d</entry>
 
+    <!-- API Club (Driving License API) configuration -->
+    <entry key="dl.api.url">https://uat.apiclub.in/api/v1/fetch_dl</entry>
+    <!-- Replace with your real key in non-committed config -->
+    <entry key="dl.api.key">apclb_6UvEDOwM6phrBJqYmEPRZqirf9f4463d</entry>
+
 </properties>

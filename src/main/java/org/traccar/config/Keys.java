@@ -2055,6 +2055,10 @@ public final class Keys {
         public static final ConfigKey<String> WEB_SAME_SITE_COOKIE = new StringConfigKey(
                         "web.sameSiteCookie",
                         List.of(KeyType.CONFIG));
+        // public static final ConfigKey<String> WEB_SAME_SITE_COOKIE = new
+        // StringConfigKey(
+        // "web.sameSiteCookie",
+        // List.of(KeyType.CONFIG));
 
         /**
          * Enables persisting Jetty session to the database
@@ -2208,6 +2212,43 @@ public final class Keys {
          */
         public static final ConfigKey<Boolean> BROADCAST_SECONDARY = new BooleanConfigKey(
                         "broadcast.secondary",
+                        List.of(KeyType.CONFIG));
+
+        /**
+         * Vehicle RC API base URL for vehicle validation.
+         */
+        public static final ConfigKey<String> VEHICLE_RC_API_URL = new StringConfigKey(
+                        "vehicle.rc.api.url",
+                        List.of(KeyType.CONFIG),
+                        "https://uat.apiclub.in/api/v1/rc_info");
+
+        /**
+         * Vehicle RC API request ID header (optional, 5-50 characters).
+         */
+        public static final ConfigKey<String> VEHICLE_RC_API_REQUEST_ID = new StringConfigKey(
+                        "vehicle.rc.api.requestId",
+                        List.of(KeyType.CONFIG));
+
+        /**
+         * Vehicle RC API key for authentication (x-api-key header).
+         */
+        public static final ConfigKey<String> VEHICLE_RC_API_KEY = new StringConfigKey(
+                        "vehicle.rc.api.key",
+                        List.of(KeyType.CONFIG));
+
+        /**
+         * Driving License API base URL.
+         */
+        public static final ConfigKey<String> DL_API_URL = new StringConfigKey(
+                        "dl.api.url",
+                        List.of(KeyType.CONFIG),
+                        "https://uat.apiclub.in/api/v1/fetch_dl");
+
+        /**
+         * Driving License API key (x-api-key header).
+         */
+        public static final ConfigKey<String> DL_API_KEY = new StringConfigKey(
+                        "dl.api.key",
                         List.of(KeyType.CONFIG));
 
 }

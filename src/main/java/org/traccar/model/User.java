@@ -263,6 +263,16 @@ public class User extends ExtendedModel implements UserRestrictions, Disableable
         this.temporary = temporary;
     }
 
+    private boolean vehicleValidationAccess;
+
+    public boolean getVehicleValidationAccess() {
+        return vehicleValidationAccess;
+    }
+
+    public void setVehicleValidationAccess(boolean vehicleValidationAccess) {
+        this.vehicleValidationAccess = vehicleValidationAccess;
+    }
+
     @QueryIgnore
     public String getPassword() {
         return null;
