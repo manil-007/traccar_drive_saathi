@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="2025-10-24-create-transporter-vehicle-map" author="copilot">
+        <createTable tableName="tc_transporter_vehicle_map">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="transporterName" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="vehicleNumber" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="createdAt" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updatedAt" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="tc_transporter_vehicle_map" columnNames="vehicleNumber" constraintName="uc_vehicle_number"/>
+    </changeSet>
+
+    <changeSet id="2025-10-24-fix-transporter-vehicle-map-columns" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tc_transporter_vehicle_map"/>
+            <not>
+                <columnExists tableName="tc_transporter_vehicle_map" columnName="createdAt"/>
+            </not>
+        </preConditions>
+        <dropTable tableName="tc_transporter_vehicle_map"/>
+        <createTable tableName="tc_transporter_vehicle_map">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="transporterName" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="vehicleNumber" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="createdAt" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updatedAt" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="tc_transporter_vehicle_map" columnNames="vehicleNumber" constraintName="uc_vehicle_number"/>
+    </changeSet>
+
+</databaseChangeLog>

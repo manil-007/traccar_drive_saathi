@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add user filtering to tc_vehicle_validity table (recreate table to avoid unknown constraint name issues) -->
+    <changeSet id="changelog-6.12.0-1" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tc_vehicle_validity"/>
+            <not>
+                <columnExists tableName="tc_vehicle_validity" columnName="userid"/>
+            </not>
+        </preConditions>
+
+        <!-- Create a new table with desired schema including userid and per-user uniqueness -->
+        <createTable tableName="tc_vehicle_validity_new">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_tc_vehicle_validity_new"/>
+            </column>
+
+            <!-- Per-user scoping -->
+            <column name="userid" type="INT">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Primary identifiers (no global unique here) -->
+            <column name="licenseplate" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="chassisnumber" type="VARCHAR(50)"/>
+            <column name="enginenumber" type="VARCHAR(50)"/>
+
+            <!-- Owner details -->
+            <column name="ownername" type="VARCHAR(255)"/>
+            <column name="fathername" type="VARCHAR(255)"/>
+            <column name="presentaddress" type="VARCHAR(1024)"/>
+            <column name="permanentaddress" type="VARCHAR(1024)"/>
+
+            <!-- Finance details -->
+            <column name="isfinanced" type="VARCHAR(50)"/>
+            <column name="financer" type="VARCHAR(255)"/>
+
+            <!-- Insurance details -->
+            <column name="insurancecompany" type="VARCHAR(255)"/>
+            <column name="insurancepolicy" type="VARCHAR(100)"/>
+            <column name="insuranceexpiry" type="DATE"/>
+
+            <!-- Vehicle details -->
+            <column name="vehicleclass" type="VARCHAR(100)"/>
+            <column name="registrationdate" type="DATE"/>
+            <column name="vehicleage" type="VARCHAR(50)"/>
+            <column name="fueltype" type="VARCHAR(50)"/>
+            <column name="brandname" type="VARCHAR(255)"/>
+            <column name="brandmodel" type="VARCHAR(255)"/>
+            <column name="cubiccapacity" type="VARCHAR(50)"/>
+            <column name="grossweight" type="VARCHAR(50)"/>
+            <column name="cylinders" type="VARCHAR(10)"/>
+            <column name="color" type="VARCHAR(50)"/>
+            <column name="norms" type="VARCHAR(100)"/>
+            <column name="nocdetails" type="VARCHAR(255)"/>
+            <column name="seatingcapacity" type="VARCHAR(10)"/>
+            <column name="ownercount" type="VARCHAR(10)"/>
+
+            <!-- PUCC details -->
+            <column name="puccupto" type="DATE"/>
+            <column name="puccnumber" type="VARCHAR(100)"/>
+
+            <!-- Tax details -->
+            <column name="taxupto" type="DATE"/>
+            <column name="taxpaidupto" type="VARCHAR(50)"/>
+
+            <!-- Permit details -->
+            <column name="permitnumber" type="VARCHAR(100)"/>
+            <column name="permitissuedate" type="DATE"/>
+            <column name="permitvalidfrom" type="DATE"/>
+            <column name="permitvalidupto" type="DATE"/>
+            <column name="permittype" type="VARCHAR(100)"/>
+            <column name="nationalpermitnumber" type="VARCHAR(100)"/>
+            <column name="nationalpermitupto" type="DATE"/>
+            <column name="nationalpermitissuedby" type="VARCHAR(255)"/>
+
+            <!-- RC status -->
+            <column name="rcstatus" type="VARCHAR(50)"/>
+
+            <!-- Additional vehicle information -->
+            <column name="category" type="VARCHAR(50)"/>
+            <column name="bodytype" type="VARCHAR(100)"/>
+            <column name="fitupto" type="DATE"/>
+            <column name="manufacturingdate" type="VARCHAR(50)"/>
+            <column name="manufacturingdateformatted" type="VARCHAR(50)"/>
+            <column name="rtoname" type="VARCHAR(255)"/>
+            <column name="latestby" type="VARCHAR(255)"/>
+            <column name="sleepercapacity" type="VARCHAR(10)"/>
+            <column name="standingcapacity" type="VARCHAR(10)"/>
+            <column name="wheelbase" type="VARCHAR(50)"/>
+            <column name="unladenweight" type="VARCHAR(50)"/>
+
+            <!-- Metadata -->
+            <column name="createdat" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updatedat" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Foreign key and constraints on the NEW table -->
+        <addForeignKeyConstraint 
+            baseTableName="tc_vehicle_validity_new" 
+            baseColumnNames="userid" 
+            constraintName="fk_vehicle_validity_userid" 
+            referencedTableName="tc_users" 
+            referencedColumnNames="id" 
+            onDelete="CASCADE"/>
+
+        <!-- Per-user uniqueness on licenseplate -->
+        <addUniqueConstraint 
+            tableName="tc_vehicle_validity_new" 
+            columnNames="userid,licenseplate" 
+            constraintName="uc_user_vehicle_license"/>
+
+        <!-- Index to speed up user filtering -->
+        <createIndex tableName="tc_vehicle_validity_new" indexName="idx_vehicle_validity_userid">
+            <column name="userid"/>
+        </createIndex>
+
+        <!-- Migrate existing data; default userid to 1 for existing rows -->
+        <sql>
+            INSERT INTO tc_vehicle_validity_new (
+                userid, licenseplate, chassisnumber, enginenumber, ownername, fathername, presentaddress,
+                permanentaddress, isfinanced, financer, insurancecompany, insurancepolicy, insuranceexpiry,
+                vehicleclass, registrationdate, vehicleage, fueltype, brandname, brandmodel, cubiccapacity,
+                grossweight, cylinders, color, norms, nocdetails, seatingcapacity, ownercount,
+                puccupto, puccnumber, taxupto, taxpaidupto, permitnumber, permitissuedate, permitvalidfrom,
+                permitvalidupto, permittype, nationalpermitnumber, nationalpermitupto, nationalpermitissuedby,
+                rcstatus, category, bodytype, fitupto, manufacturingdate, manufacturingdateformatted,
+                rtoname, latestby, sleepercapacity, standingcapacity, wheelbase, unladenweight, createdat, updatedat
+            )
+            SELECT 
+                1 as userid, licenseplate, chassisnumber, enginenumber, ownername, fathername, presentaddress,
+                permanentaddress, isfinanced, financer, insurancecompany, insurancepolicy, insuranceexpiry,
+                vehicleclass, registrationdate, vehicleage, fueltype, brandname, brandmodel, cubiccapacity,
+                grossweight, cylinders, color, norms, nocdetails, seatingcapacity, ownercount,
+                puccupto, puccnumber, taxupto, taxpaidupto, permitnumber, permitissuedate, permitvalidfrom,
+                permitvalidupto, permittype, nationalpermitnumber, nationalpermitupto, nationalpermitissuedby,
+                rcstatus, category, bodytype, fitupto, manufacturingdate, manufacturingdateformatted,
+                rtoname, latestby, sleepercapacity, standingcapacity, wheelbase, unladenweight, createdat, updatedat
+            FROM tc_vehicle_validity;
+        </sql>
+
+        <!-- Replace old table -->
+        <dropTable tableName="tc_vehicle_validity"/>
+        <renameTable oldTableName="tc_vehicle_validity_new" newTableName="tc_vehicle_validity"/>
+    </changeSet>
+
+    <!-- Add user filtering to tc_transporter_vehicle_map table -->
+    <changeSet id="changelog-6.12.0-2" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tc_transporter_vehicle_map"/>
+            <not>
+                <columnExists tableName="tc_transporter_vehicle_map" columnName="userid"/>
+            </not>
+        </preConditions>
+
+        <!-- Step 1: Drop the existing unique constraint on vehicleNumber -->
+        <dropUniqueConstraint tableName="tc_transporter_vehicle_map" constraintName="uc_vehicle_number"/>
+
+        <!-- Step 2: Add userid column (nullable first to allow existing data) -->
+        <addColumn tableName="tc_transporter_vehicle_map">
+            <column name="userid" type="INT">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Step 3: Update existing rows to set userid (set to admin user id=1 if exists, or leave null for cleanup) -->
+        <sql>UPDATE tc_transporter_vehicle_map SET userid = 1 WHERE userid IS NULL</sql>
+
+        <!-- Step 4: Make userid NOT NULL after populating existing data -->
+        <addNotNullConstraint tableName="tc_transporter_vehicle_map" columnName="userid" columnDataType="INT"/>
+
+        <!-- Step 5: Add foreign key constraint to tc_users -->
+        <addForeignKeyConstraint 
+            baseTableName="tc_transporter_vehicle_map" 
+            baseColumnNames="userid" 
+            constraintName="fk_transporter_vehicle_map_userid" 
+            referencedTableName="tc_users" 
+            referencedColumnNames="id" 
+            onDelete="CASCADE"/>
+
+        <!-- Step 6: Add composite unique constraint (userid + vehicleNumber) -->
+        <!-- This allows different users to have the same vehicle number with different transporters -->
+        <addUniqueConstraint 
+            tableName="tc_transporter_vehicle_map" 
+            columnNames="userid,vehicleNumber" 
+            constraintName="uc_user_vehicle_transporter"/>
+
+        <!-- Step 7: Add index on userid for faster queries -->
+        <createIndex tableName="tc_transporter_vehicle_map" indexName="idx_transporter_vehicle_map_userid">
+            <column name="userid"/>
+        </createIndex>
+
+        <!-- Step 8: Add composite index on userid + transporterName for faster transporter queries -->
+        <createIndex tableName="tc_transporter_vehicle_map" indexName="idx_transporter_vehicle_map_user_transporter">
+            <column name="userid"/>
+            <column name="transporterName"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

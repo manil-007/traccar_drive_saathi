@@ -6,6 +6,7 @@
     <entry key='web.localizationPath'>./traccar-web/src/resources/l10n</entry>
     <entry key='web.debug'>true</entry>
     <entry key='web.console'>true</entry>
+    <entry key='web.sameSiteCookie'>None</entry> 
 
     <entry key='geocoder.type'>pluscodes</entry>
 
@@ -27,5 +28,27 @@
 
     <entry key='atrack.custom'>true</entry>
     <entry key='intellitrac.port'>6037</entry>
+
+    <!-- Enable using environment variables instead of XML if you want (optional) -->
+    <entry key="config.useEnvironmentVariables">false</entry>
+
+    <!-- APISETU configuration -->
+    <entry key="apisetu.baseUrl">https://sandbox.api-setu.in/</entry>
+    <entry key="apisetu.apiKey">demokey123456ABCD789</entry>
+    <entry key="apisetu.clientId">in.gov.sandbox</entry>
+    
+    <!-- Ola Maps API key-->
+    <entry key="ola.maps.apiKey">qrhV0iCzP4zV33vbcO3p1guSQWYrePDC9T5KW9a4</entry>
+    <!-- ORS (OpenRouteService) API key used for directions/geocoding in TripExpenseResource2 -->
+    <entry key="ors.apiKey">eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjM0MzRmMTE2MDYyNDQyMWI5YWI1ZjFjNjZkMDEyZjJmIiwiaCI6Im11cm11cjY0In0=</entry>
+    
+    <!-- API Club (Vehicle RC API) configuration -->
+    <entry key="vehicle.rc.api.url">https://uat.apiclub.in/api/v1/rc_info</entry>
+    <entry key="vehicle.rc.api.key">apclb_6UvEDOwM6phrBJqYmEPRZqirf9f4463d</entry>
+
+    <!-- API Club (Driving License API) configuration -->
+    <entry key="dl.api.url">https://uat.apiclub.in/api/v1/fetch_dl</entry>
+    <!-- Replace with your real key in non-committed config -->
+    <entry key="dl.api.key">apclb_6UvEDOwM6phrBJqYmEPRZqirf9f4463d</entry>
 
 </properties>

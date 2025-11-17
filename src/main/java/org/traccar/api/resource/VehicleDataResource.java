@@ -16,7 +16,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import jakarta.annotation.security.PermitAll;
+// import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashSet;

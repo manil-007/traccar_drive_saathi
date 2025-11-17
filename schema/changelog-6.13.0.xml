@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+        logicalFilePath="changelog-6.13.0">
+
+  <changeSet author="copilot" id="changelog-6.13.0-1">
+    <createTable tableName="tc_driving_license">
+      <column name="id" type="INT" autoIncrement="true">
+        <constraints nullable="false" primaryKey="true" primaryKeyName="pk_tc_driving_license"/>
+      </column>
+
+      <!-- per-user scoping -->
+      <column name="userid" type="INT">
+        <constraints nullable="false"/>
+      </column>
+
+      <column name="dlno" type="VARCHAR(50)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="dob" type="VARCHAR(20)"/>
+      <column name="holdername" type="VARCHAR(255)"/>
+      <column name="gender" type="VARCHAR(20)"/>
+      <column name="status" type="VARCHAR(50)"/>
+      <column name="fatherorhusbandname" type="VARCHAR(255)"/>
+      <column name="presentaddress" type="VARCHAR(1024)"/>
+      <column name="permanentaddress" type="VARCHAR(1024)"/>
+      <column name="issuedate" type="VARCHAR(20)"/>
+      <column name="rtocode" type="VARCHAR(255)"/>
+
+      <!-- validity windows -->
+      <column name="nontransportvalidfrom" type="DATE"/>
+      <column name="nontransportvalidto" type="DATE"/>
+      <column name="transportvalidfrom" type="DATE"/>
+      <column name="transportvalidto" type="DATE"/>
+
+      <!-- array stored as JSON string -->
+      <column name="vehicleclassjson" type="CLOB"/>
+
+      <column name="image" type="CLOB"/>
+
+      <!-- raw upstream response -->
+      <column name="rawresponse" type="CLOB"/>
+
+      <!-- computed statuses -->
+      <column name="nontransportexpirystatus" type="VARCHAR(20)"/>
+      <column name="transportexpirystatus" type="VARCHAR(20)"/>
+      <column name="overallexpirystatus" type="VARCHAR(20)"/>
+      <column name="overallexpirydate" type="DATE"/>
+
+      <!-- metadata -->
+      <column name="createdat" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+      <column name="updatedat" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_driving_license"
+      baseColumnNames="userid"
+      constraintName="fk_driving_license_userid"
+      referencedTableName="tc_users"
+      referencedColumnNames="id"
+      onDelete="CASCADE"/>
+
+    <addUniqueConstraint tableName="tc_driving_license" columnNames="userid,dlno" constraintName="uc_user_dlno"/>
+
+    <createIndex tableName="tc_driving_license" indexName="idx_driving_license_userid">
+      <column name="userid"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>
