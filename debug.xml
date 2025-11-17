@@ -2,11 +2,11 @@
 <!DOCTYPE properties SYSTEM 'http://java.sun.com/dtd/properties.dtd'>
 <properties>
 
-    <entry key='web.path'>./traccar-web/simple</entry>
+    <!-- <entry key='web.path'>./traccar-web/simple</entry>
     <entry key='web.localizationPath'>./traccar-web/src/resources/l10n</entry>
     <entry key='web.debug'>true</entry>
     <entry key='web.console'>true</entry>
-    <entry key='web.sameSiteCookie'>None</entry> 
+    <entry key='web.sameSiteCookie'>None</entry>  -->
 
     <entry key='geocoder.type'>pluscodes</entry>
 
@@ -18,10 +18,10 @@
 
     <entry key='mail.debug'>true</entry>
 
-    <entry key='database.driver'>org.h2.Driver</entry>
-    <entry key='database.url'>jdbc:h2:./target/database</entry>
-    <entry key='database.user'>sa</entry>
-    <entry key='database.password'></entry>
+    <entry key='database.driver'>com.mysql.cj.jdbc.Driver</entry>
+    <entry key='database.url'>jdbc:mysql://database:3306/traccar?zeroDateTimeBehavior=round&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true&amp;useSSL=false&amp;allowMultiQueries=true&amp;autoReconnect=true&amp;useUnicode=yes&amp;characterEncoding=UTF-8&amp;sessionVariables=sql_mode=''</entry>
+    <entry key='database.user'>traccar</entry>
+    <entry key='database.password'>traccar</entry>
 
     <!--<entry key='server.instantAcknowledgement'>true</entry>
     <entry key='server.buffering.threshold'>5000</entry>-->
