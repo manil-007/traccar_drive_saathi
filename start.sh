@@ -32,8 +32,7 @@ echo "✅ Docker is running"
 
 echo ""
 echo "Step 1/4: Building JAR with Gradle..."
-./gradlew assemble
-
+./gradlew.bat assemble
 if [ ! -f "target/tracker-server.jar" ]; then
     echo "ERROR: JAR file not found at target/tracker-server.jar"
     exit 1
@@ -59,6 +58,7 @@ echo "=========================================="
 echo ""
 echo "API Endpoint: http://localhost:8082/api"
 echo "Health Check: curl http://localhost:8082/api/server"
+echo "Docs: http://localhost:8082/api/docs"
 echo ""
 echo "View logs: docker compose -f docker/compose/traccar-mysql.yaml logs -f traccar"
 echo "Stop: ./stop.sh"

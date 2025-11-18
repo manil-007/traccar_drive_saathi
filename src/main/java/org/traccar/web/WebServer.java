@@ -205,25 +205,25 @@ public class WebServer implements LifecycleObject {
             servletHandler.getSessionHandler().setMaxInactiveInterval(sessionTimeout);
             sessionCookieConfig.setMaxAge(sessionTimeout);
         }
-        sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
+        // sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
         //TODO: revisit
-        // String sameSiteCookie = config.getString(Keys.WEB_SAME_SITE_COOKIE);
-        // if (sameSiteCookie != null) {
-        //     switch (sameSiteCookie.toLowerCase()) {
-        //         case "lax":
-        //             sessionHandler.setSameSite(HttpCookie.SameSite.LAX);
-        //             break;
-        //         case "strict":
-        //             sessionHandler.setSameSite(HttpCookie.SameSite.STRICT);
-        //             break;
-        //         case "none":
-        //             sessionCookieConfig.setSecure(true);
-        //             sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
-        //             break;
-        //         default:
-        //             break;
-        //     }
-        // }
+        String sameSiteCookie = config.getString(Keys.WEB_SAME_SITE_COOKIE);
+        if (sameSiteCookie != null) {
+            switch (sameSiteCookie.toLowerCase()) {
+                case "lax":
+                    sessionHandler.setSameSite(HttpCookie.SameSite.LAX);
+                    break;
+                case "strict":
+                    sessionHandler.setSameSite(HttpCookie.SameSite.STRICT);
+                    break;
+                case "none":
+                    sessionCookieConfig.setSecure(true);
+                    sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
+                    break;
+                default:
+                    break;
+            }
+        }
 
         sessionCookieConfig.setHttpOnly(true);
     }
