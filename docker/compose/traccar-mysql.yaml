@@ -1,5 +1,4 @@
 services:
-
   database:
     image: mysql:8.4
     restart: unless-stopped
@@ -11,7 +10,7 @@ services:
       MYSQL_USER: traccar
       MYSQL_PASSWORD: traccar
     volumes:
-      - /opt/traccar/data:/var/lib/mysql
+      - traccar-mysql-data:/var/lib/mysql
 
   traccar:
     image: my-traccar-app:latest
@@ -35,7 +34,8 @@ services:
       DATABASE_USER: traccar
       DATABASE_PASSWORD: traccar
     healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
+      test:
+        ["CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health"]
       interval: 2m
       timeout: 5s
       start_period: 1h
@@ -55,3 +55,6 @@ services:
       AUTOHEAL_START_PERIOD: 3600
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  traccar-mysql-data:

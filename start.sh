@@ -1,65 +1,6 @@
-#!/bin/bash
-
-# Traccar Custom Backend - Start Script
-# This script rebuilds the JAR, builds the Docker image, and starts all services
-
-set -e  # Exit on any error
-
+#!/bin/sh
 echo "=========================================="
-echo "Starting Traccar Custom Backend"
+echo "Starting DriveSaathi server..."
 echo "=========================================="
 
-# Get the script directory (repo root)
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
-
-# Check if Docker is running
-echo ""
-echo "Checking Docker status..."
-if ! docker info > /dev/null 2>&1; then
-    echo ""
-    echo "❌ ERROR: Docker is not running!"
-    echo ""
-    echo "Please start Docker Desktop first:"
-    echo "  - On Windows: Open Docker Desktop from Start Menu"
-    echo "  - On Linux: sudo systemctl start docker"
-    echo ""
-    echo "Then run this script again: ./start.sh"
-    echo ""
-    exit 1
-fi
-echo "✅ Docker is running"
-
-echo ""
-echo "Step 1/4: Building JAR with Gradle..."
-./gradlew.bat assemble
-if [ ! -f "target/tracker-server.jar" ]; then
-    echo "ERROR: JAR file not found at target/tracker-server.jar"
-    exit 1
-fi
-
-echo ""
-echo "Step 2/4: Building Docker image..."
-docker build -f docker/Dockerfile.app -t my-traccar-app:latest .
-
-echo ""
-echo "Step 3/4: Starting Docker containers..."
-cd docker/compose
-docker compose -f traccar-mysql.yaml up -d
-
-echo ""
-echo "Step 4/4: Waiting for services to start..."
-sleep 10
-
-echo ""
-echo "=========================================="
-echo "Traccar Backend Started Successfully!"
-echo "=========================================="
-echo ""
-echo "API Endpoint: http://localhost:8082/api"
-echo "Health Check: curl http://localhost:8082/api/server"
-echo "Docs: http://localhost:8082/api/docs"
-echo ""
-echo "View logs: docker compose -f docker/compose/traccar-mysql.yaml logs -f traccar"
-echo "Stop: ./stop.sh"
-echo ""
+docker compose -f docker/compose/traccar-mysql.yaml up

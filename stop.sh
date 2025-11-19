@@ -6,7 +6,7 @@
 set -e  # Exit on any error
 
 echo "=========================================="
-echo "Stopping Traccar Custom Backend"
+echo "Stopping DriveSaathi server..."
 echo "=========================================="
 
 # Get the script directory (repo root)
@@ -19,7 +19,7 @@ docker compose -f traccar-mysql.yaml down
 
 echo ""
 echo "=========================================="
-echo "Traccar Backend Stopped Successfully!"
+echo "DriveSaathi server Stopped Successfully!"
 echo "=========================================="
 echo ""
 echo "To start again: ./start.sh"
