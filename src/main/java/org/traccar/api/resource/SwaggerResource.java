@@ -57,6 +57,7 @@ public class SwaggerResource {
                 """;
         return Response.ok(html).build();
     }
+
     @PermitAll
     @GET
     @Path("openapi.yaml")
@@ -75,12 +76,13 @@ public class SwaggerResource {
                     .entity("Error reading OpenAPI specification: " + e.getMessage()).build();
         }
     }
+
     @PermitAll
     @GET
     @Path("webjars/{resource:.*}")
     public Response getWebJar(@jakarta.ws.rs.PathParam("resource") String resource) {
         try {
-            String resourcePath = "META-INF/resources/webjars/swagger-ui/5.10.3/" + resource;
+            String resourcePath = "META-INF/resources/webjars/swagger-ui/5.17.14/" + resource;
             InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath);
             if (is == null) {
                 return Response.status(Response.Status.NOT_FOUND).build();
