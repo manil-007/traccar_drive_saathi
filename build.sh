@@ -33,7 +33,8 @@ echo "✅ Docker is running"
 
 echo ""
 echo "Step 1/4: Building JAR with Gradle..."
-./gradlew.bat assemble
+chmod +x gradlew
+./gradlew assemble
 if [ ! -f "target/tracker-server.jar" ]; then
       echo "ERROR: JAR file not found at target/tracker-server.jar"
       exit 1

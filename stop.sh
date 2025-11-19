@@ -1,10 +1,5 @@
 #!/bin/bash
-
-# Traccar Custom Backend - Stop Script
-# This script stops all running services
-
-set -e  # Exit on any error
-
+set -e
 echo "=========================================="
 echo "Stopping DriveSaathi server..."
 echo "=========================================="
@@ -17,11 +12,10 @@ echo ""
 echo "Stopping Docker containers..."
 docker compose -f traccar-mysql.yaml down
 
-echo ""
 echo "=========================================="
 echo "DriveSaathi server Stopped Successfully!"
 echo "=========================================="
 echo ""
 echo "To start again: ./start.sh"
-echo "To remove all data (including database): docker compose -f docker/compose/traccar-mysql.yaml down -v"
+echo "To remove all data (including database): docker compose -f traccar-mysql.yaml down -v"
 echo ""
