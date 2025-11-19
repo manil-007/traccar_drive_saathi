@@ -94,10 +94,22 @@ public class WebServer implements LifecycleObject {
 
         initWebApp(servletHandler);
 
+        // Wrap servletHandler with GzipHandler for compression
+        GzipHandler gzipHandler = new GzipHandler();
+        gzipHandler.setIncludedMimeTypes(
+                "text/html",
+                "text/css",
+                "application/javascript",
+                "text/javascript",
+                "application/json",
+                "text/yaml",
+                "application/yaml");
+        gzipHandler.setMinGzipSize(1024); // Only compress files larger than 1KB
+        gzipHandler.setHandler(servletHandler);
+
         Handler.Sequence handlers = new Handler.Sequence();
         initClientProxy(servletHandler);
-        handlers.addHandler(servletHandler);
-        handlers.addHandler(new GzipHandler());
+        handlers.addHandler(gzipHandler);
         server.setHandler(handlers);
 
         if (config.hasKey(Keys.WEB_REQUEST_LOG_PATH)) {
@@ -152,9 +164,9 @@ public class WebServer implements LifecycleObject {
         servletHandler.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
 
         if (config.getBoolean(Keys.WEB_DEBUG)) {
-            servletHandler.setWelcomeFiles(new String[] {"debug.html", "index.html"});
+            servletHandler.setWelcomeFiles(new String[] { "debug.html", "index.html" });
         } else {
-            servletHandler.setWelcomeFiles(new String[] {"release.html", "index.html"});
+            servletHandler.setWelcomeFiles(new String[] { "release.html", "index.html" });
         }
     }
 
@@ -206,7 +218,7 @@ public class WebServer implements LifecycleObject {
             sessionCookieConfig.setMaxAge(sessionTimeout);
         }
         // sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
-        //TODO: revisit
+        // TODO: revisit
         String sameSiteCookie = config.getString(Keys.WEB_SAME_SITE_COOKIE);
         if (sameSiteCookie != null) {
             switch (sameSiteCookie.toLowerCase()) {

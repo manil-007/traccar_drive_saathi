@@ -35,6 +35,21 @@ public class SwaggerResource {
                     <script src="/api/docs/webjars/swagger-ui-bundle.js" charset="UTF-8"></script>
                     <script src="/api/docs/webjars/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
                     <script>
+                        // Plugin to remove operation-level servers
+                        const HideOperationServersPlugin = function() {
+                            return {
+                                wrapComponents: {
+                                    Servers: (Original, system) => (props) => {
+                                        // Only render servers at the root level (global), not at operation level
+                                        if (props.path && props.path.includes('operations')) {
+                                            return null;
+                                        }
+                                        return system.React.createElement(Original, props);
+                                    }
+                                }
+                            };
+                        };
+                        
                         window.onload = function() {
                             window.ui = SwaggerUIBundle({
                                 url: "/api/docs/openapi.yaml",
@@ -45,10 +60,14 @@ public class SwaggerResource {
                                     SwaggerUIStandalonePreset
                                 ],
                                 plugins: [
-                                    SwaggerUIBundle.plugins.DownloadUrl
+                                    SwaggerUIBundle.plugins.DownloadUrl,
+                                    HideOperationServersPlugin
                                 ],
                                 layout: "StandaloneLayout",
-                                persistAuthorization: true
+                                persistAuthorization: true,
+                                displayOperationId: false,
+                                displayRequestDuration: true,
+                                filter: true
                             });
                         };
                     </script>
@@ -70,7 +89,11 @@ public class SwaggerResource {
             }
             byte[] bytes = is.readAllBytes();
             String content = new String(bytes, StandardCharsets.UTF_8);
-            return Response.ok(content).build();
+            return Response.ok(content)
+                    .header("Cache-Control", "no-cache, must-revalidate")
+                    .header("Pragma", "no-cache")
+                    .header("Expires", "0")
+                    .build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Error reading OpenAPI specification: " + e.getMessage()).build();
@@ -90,7 +113,13 @@ public class SwaggerResource {
 
             byte[] bytes = is.readAllBytes();
             String contentType = getContentType(resource);
-            return Response.ok(bytes).type(contentType).build();
+
+            return Response.ok(bytes)
+                    .type(contentType)
+                    .header("Cache-Control", "public, max-age=31536000, immutable")
+                    .header("Content-Length", bytes.length)
+                    .header("Vary", "Accept-Encoding")
+                    .build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Error loading resource: " + e.getMessage()).build();

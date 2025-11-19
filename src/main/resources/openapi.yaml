@@ -11,20 +11,12 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   version: "6.9.1"
 servers:
-  - url: http://{host}:{port}/api
-    description: Other Server
-    variables:
-      host:
-        default: localhost
-      port:
-        enum:
-          - "8082"
-          - "80"
-        default: "8082"
-  - url: https://demo.drivesaathi.com/api
-    description: Demo Server 1
+  - url: http://51.21.203.186:8082/api
+    description: Production Server
   - url: https://server.drivesaathi.com/api
     description: Subscription Server
+  - url: http://localhost:8082/api
+    description: Local Development (8082)
 security:
   - BasicAuth: []
   - ApiKey: []
