@@ -10,4 +10,4 @@ cd "$SCRIPT_DIR/docker/compose"
 
 echo ""
 echo "Starting Docker containers..."
-docker compose -f traccar-mysql.yaml up
+docker-compose -f traccar-mysql.yaml up -d

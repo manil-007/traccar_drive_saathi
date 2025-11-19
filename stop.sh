@@ -10,7 +10,7 @@ cd "$SCRIPT_DIR/docker/compose"
 
 echo ""
 echo "Stopping Docker containers..."
-docker compose -f traccar-mysql.yaml down
+docker-compose -f traccar-mysql.yaml down
 
 echo "=========================================="
 echo "DriveSaathi server Stopped Successfully!"
@@ -18,4 +18,5 @@ echo "=========================================="
 echo ""
 echo "To start again: ./start.sh"
 echo "To remove all data (including database): docker compose -f traccar-mysql.yaml down -v"
+echo "To remove all data (including database): docker-compose -f traccar-mysql.yaml down -v"
 echo ""

@@ -135,6 +135,10 @@ dependencies {
     implementation "com.rabbitmq:amqp-client:5.26.0"
     implementation "com.warrenstrange:googleauth:1.5.0"
     implementation "com.google.openlocationcode:openlocationcode:1.0.4"
+    // Swagger/OpenAPI dependencies for Jersey
+    implementation "io.swagger.core.v3:swagger-jaxrs2:2.2.21"
+    implementation "io.swagger.core.v3:swagger-jaxrs2-servlet-initializer-v2:2.2.21"
+    implementation "org.webjars:swagger-ui:5.17.14"
     testImplementation "org.mockito:mockito-core:5.19.0"
     testImplementation "org.junit.jupiter:junit-jupiter:5.13.4"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
