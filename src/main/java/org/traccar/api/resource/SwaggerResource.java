@@ -24,7 +24,7 @@ public class SwaggerResource {
                 <head>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Traccar API Documentation</title>
+                    <title>DriveSaathi API Documentation</title>
                     <link rel="stylesheet" type="text/css" href="/api/docs/webjars/swagger-ui.css">
                     <style>
                         body { margin: 0; padding: 0; }
@@ -49,7 +49,7 @@ public class SwaggerResource {
                                 }
                             };
                         };
-                        
+
                         window.onload = function() {
                             window.ui = SwaggerUIBundle({
                                 url: "/api/docs/openapi.yaml",
