@@ -2860,13 +2860,15 @@ components:
     Trip:
       type: object
       required:
+        - name
         - deviceId
+        - originLatitude
+        - originLongitude
+        - destinationLatitude
+        - destinationLongitude
+        - etaDate
         - consignorId
         - consigneeId
-        - departureDate
-        - etaDate
-        - origin
-        - destination
       properties:
         id:
           type: integer
@@ -2878,7 +2880,14 @@ components:
         deviceId:
           type: integer
           format: int64
-          description: "Device ID (required) - backend will auto-fill assetNumber and assetType from this device"
+          description: "Device ID (internal identifier) - can provide either deviceId or deviceUniqueId"
+        deviceUniqueId:
+          type: string
+          description: Device unique identifier (can be used instead of deviceId for creation)
+        deviceName:
+          type: string
+          description: Device name (auto-filled)
+          readOnly: true
         assetNumber:
           type: string
           description: Asset number (auto-filled from device uniqueId)
@@ -2918,17 +2927,34 @@ components:
           description: Custom consignee name (required if consigneeId doesn't match an existing user)
         consigneePincode:
           type: string
-          description: Consignee PIN code (optional)
-        origin:
+          description: Consignee postal code
+        originLatitude:
+          type: number
+          format: double
+          description: Origin latitude coordinate
+        originLongitude:
+          type: number
+          format: double
+          description: Origin longitude coordinate
+        originAddress:
           type: string
-          description: Origin location as text (required)
-        destination:
+          description: Origin address (optional)
+        destinationLatitude:
+          type: number
+          format: double
+          description: Destination latitude coordinate
+        destinationLongitude:
+          type: number
+          format: double
+          description: Destination longitude coordinate
+        destinationAddress:
           type: string
-          description: Destination location as text (required)
+          description: Destination address (optional)
         departureDate:
           type: string
           format: date-time
-          description: Departure date and time in ISO 8601 format (required, 24-hour format)
+          description: Departure date/time (auto-set to current time)
+          readOnly: true
         etaDate:
           type: string
           format: date-time
@@ -2999,30 +3025,39 @@ components:
         vehicleNumber:
           type: string
           description: Vehicle registration number (optional)
-        latitude:
+        currentLatitude:
           type: number
           format: double
-          description: Current latitude (auto-updated by tracking system)
+          description: Current device latitude (transient - calculated from latest position)
           readOnly: true
-        longitude:
+        currentLongitude:
           type: number
           format: double
-          description: Current longitude (auto-updated by tracking system)
+          description: Current device longitude (transient - calculated from latest position)
           readOnly: true
-        speed:
+        currentSpeed:
           type: number
           format: double
-          description: Current speed in km/h (auto-updated by tracking system)
+          description: Current device speed (transient - from latest position)
           readOnly: true
+        lastPositionUpdate:
+          type: string
+          format: date-time
+          description: Last position update timestamp (transient)
+          readOnly: true
+        referencePositionId:
+          type: integer
+          format: int64
+          description: Reference position ID (first position after departure)
         totalDistance:
           type: number
           format: double
-          description: Total distance in kilometers (calculated)
+          description: Total route distance in kilometers (origin to destination via ORS API)
           readOnly: true
         distanceCovered:
           type: number
           format: double
-          description: Distance covered in kilometers (calculated)
+          description: Distance covered in kilometers (transient - origin to current position via ORS API)
           readOnly: true
         waypoint1:
           type: string

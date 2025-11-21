@@ -15,6 +15,7 @@
  */
 package org.traccar.model;
 
+import org.traccar.storage.QueryIgnore;
 import org.traccar.storage.StorageName;
 
 import java.util.Date;
@@ -41,6 +42,26 @@ public class Trip extends ExtendedModel {
 
     public void setDeviceId(long deviceId) {
         this.deviceId = deviceId;
+    }
+
+    private String deviceUniqueId;
+
+    public String getDeviceUniqueId() {
+        return deviceUniqueId;
+    }
+
+    public void setDeviceUniqueId(String deviceUniqueId) {
+        this.deviceUniqueId = deviceUniqueId;
+    }
+
+    private String deviceName;
+
+    public String getDeviceName() {
+        return deviceName;
+    }
+
+    public void setDeviceName(String deviceName) {
+        this.deviceName = deviceName;
     }
 
     private String assetNumber;
@@ -156,24 +177,64 @@ public class Trip extends ExtendedModel {
     }
 
     // Origin and Destination
-    private String origin;
+    private double originLatitude;
 
-    public String getOrigin() {
-        return origin;
+    public double getOriginLatitude() {
+        return originLatitude;
     }
 
-    public void setOrigin(String origin) {
-        this.origin = origin;
+    public void setOriginLatitude(double originLatitude) {
+        this.originLatitude = originLatitude;
     }
 
-    private String destination;
+    private double originLongitude;
 
-    public String getDestination() {
-        return destination;
+    public double getOriginLongitude() {
+        return originLongitude;
     }
 
-    public void setDestination(String destination) {
-        this.destination = destination;
+    public void setOriginLongitude(double originLongitude) {
+        this.originLongitude = originLongitude;
+    }
+
+    private String originAddress;
+
+    public String getOriginAddress() {
+        return originAddress;
+    }
+
+    public void setOriginAddress(String originAddress) {
+        this.originAddress = originAddress;
+    }
+
+    private double destinationLatitude;
+
+    public double getDestinationLatitude() {
+        return destinationLatitude;
+    }
+
+    public void setDestinationLatitude(double destinationLatitude) {
+        this.destinationLatitude = destinationLatitude;
+    }
+
+    private double destinationLongitude;
+
+    public double getDestinationLongitude() {
+        return destinationLongitude;
+    }
+
+    public void setDestinationLongitude(double destinationLongitude) {
+        this.destinationLongitude = destinationLongitude;
+    }
+
+    private String destinationAddress;
+
+    public String getDestinationAddress() {
+        return destinationAddress;
+    }
+
+    public void setDestinationAddress(String destinationAddress) {
+        this.destinationAddress = destinationAddress;
     }
 
     // Date and Time Information
@@ -405,35 +466,61 @@ public class Trip extends ExtendedModel {
         this.vehicleNumber = vehicleNumber;
     }
 
-    // Location Tracking
-    private double latitude;
+    // Current Location Tracking (transient - not stored in DB, populated
+    // dynamically from device position)
+    private transient double currentLatitude;
 
-    public double getLatitude() {
-        return latitude;
+    @QueryIgnore
+    public double getCurrentLatitude() {
+        return currentLatitude;
     }
 
-    public void setLatitude(double latitude) {
-        this.latitude = latitude;
+    public void setCurrentLatitude(double currentLatitude) {
+        this.currentLatitude = currentLatitude;
     }
 
-    private double longitude;
+    private transient double currentLongitude;
 
-    public double getLongitude() {
-        return longitude;
+    @QueryIgnore
+    public double getCurrentLongitude() {
+        return currentLongitude;
     }
 
-    public void setLongitude(double longitude) {
-        this.longitude = longitude;
+    public void setCurrentLongitude(double currentLongitude) {
+        this.currentLongitude = currentLongitude;
     }
 
-    private double speed;
+    private transient double currentSpeed;
 
-    public double getSpeed() {
-        return speed;
+    @QueryIgnore
+    public double getCurrentSpeed() {
+        return currentSpeed;
     }
 
-    public void setSpeed(double speed) {
-        this.speed = speed;
+    public void setCurrentSpeed(double currentSpeed) {
+        this.currentSpeed = currentSpeed;
+    }
+
+    private transient Date lastPositionUpdate;
+
+    @QueryIgnore
+    public Date getLastPositionUpdate() {
+        return lastPositionUpdate;
+    }
+
+    public void setLastPositionUpdate(Date lastPositionUpdate) {
+        this.lastPositionUpdate = lastPositionUpdate;
+    }
+
+    // Reference position (first position at trip start)
+    private long referencePositionId;
+
+    public long getReferencePositionId() {
+        return referencePositionId;
+    }
+
+    public void setReferencePositionId(long referencePositionId) {
+        this.referencePositionId = referencePositionId;
     }
 
     // Distance Tracking
@@ -447,8 +534,9 @@ public class Trip extends ExtendedModel {
         this.totalDistance = totalDistance;
     }
 
-    private double distanceCovered;
+    private transient double distanceCovered;
 
+    @QueryIgnore
     public double getDistanceCovered() {
         return distanceCovered;
     }

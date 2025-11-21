@@ -22,6 +22,8 @@
       <column name="deviceid" type="INT">
         <constraints nullable="false"/>
       </column>
+      <column name="deviceuniqueid" type="VARCHAR(128)"/>
+      <column name="devicename" type="VARCHAR(128)"/>
       <column name="assetnumber" type="VARCHAR(100)"/>
       <column name="assettype" type="VARCHAR(100)"/>
       
@@ -38,9 +40,13 @@
       <column name="otherconsigneename" type="VARCHAR(255)"/>
       <column name="consigneepincode" type="VARCHAR(20)"/>
       
-      <!-- Origin and Destination -->
-      <column name="origin" type="VARCHAR(500)"/>
-      <column name="destination" type="VARCHAR(500)"/>
+      <!-- Origin and Destination (Coordinates) -->
+      <column name="originlatitude" type="DOUBLE"/>
+      <column name="originlongitude" type="DOUBLE"/>
+      <column name="originaddress" type="VARCHAR(500)"/>
+      <column name="destinationlatitude" type="DOUBLE"/>
+      <column name="destinationlongitude" type="DOUBLE"/>
+      <column name="destinationaddress" type="VARCHAR(500)"/>
       
       <!-- Date and Time Information -->
       <column name="departuredate" type="TIMESTAMP"/>
@@ -82,14 +88,11 @@
       <column name="vehicletype" type="VARCHAR(100)"/>
       <column name="vehiclenumber" type="VARCHAR(50)"/>
       
-      <!-- Location Tracking -->
-      <column name="latitude" type="DOUBLE"/>
-      <column name="longitude" type="DOUBLE"/>
-      <column name="speed" type="DOUBLE"/>
+      <!-- Reference position for distance calculation (first position at trip start) -->
+      <column name="referencepositionid" type="BIGINT"/>
       
       <!-- Distance Tracking -->
       <column name="totaldistance" type="DOUBLE"/>
-      <column name="distancecovered" type="DOUBLE"/>
       
       <!-- Waypoints -->
       <column name="waypoint1" type="VARCHAR(255)"/>
