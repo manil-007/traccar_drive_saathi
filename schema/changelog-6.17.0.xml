@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+        logicalFilePath="changelog-6.17.0">
+
+  <changeSet author="author" id="changelog-6.17.0-1">
+
+    <!-- Create tc_trips table for storing trip details -->
+    <createTable tableName="tc_trips">
+      <column name="id" type="INT" autoIncrement="true">
+        <constraints nullable="false" primaryKey="true" primaryKeyName="pk_tc_trips"/>
+      </column>
+      
+      <column name="name" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      
+      <!-- Asset/Device Information -->
+      <column name="deviceid" type="INT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="assetnumber" type="VARCHAR(100)"/>
+      <column name="assettype" type="VARCHAR(100)"/>
+      
+      <!-- Transporter Information -->
+      <column name="transportername" type="VARCHAR(255)"/>
+      <column name="othertransportername" type="VARCHAR(255)"/>
+      
+      <!-- Consignor/Consignee Information -->
+      <column name="consignorid" type="INT"/>
+      <column name="consignorname" type="VARCHAR(255)"/>
+      <column name="otherconsignorname" type="VARCHAR(255)"/>
+      <column name="consigneeid" type="INT"/>
+      <column name="consigneename" type="VARCHAR(255)"/>
+      <column name="otherconsigneename" type="VARCHAR(255)"/>
+      <column name="consigneepincode" type="VARCHAR(20)"/>
+      
+      <!-- Origin and Destination -->
+      <column name="origin" type="VARCHAR(500)"/>
+      <column name="destination" type="VARCHAR(500)"/>
+      
+      <!-- Date and Time Information -->
+      <column name="departuredate" type="TIMESTAMP"/>
+      <column name="etadate" type="TIMESTAMP"/>
+      <column name="bookingdate" type="TIMESTAMP"/>
+      
+      <!-- Driver Information -->
+      <column name="drivernumber" type="VARCHAR(100)"/>
+      <column name="drivername" type="VARCHAR(255)"/>
+      <column name="drivermobile" type="VARCHAR(20)"/>
+      <column name="drivercontact" type="VARCHAR(20)"/>
+      <column name="driverlicense" type="VARCHAR(100)"/>
+      <column name="driverid" type="INT"/>
+      
+      <!-- Shipper Information -->
+      <column name="shippername" type="VARCHAR(255)"/>
+      <column name="shipmentid" type="VARCHAR(100)"/>
+      
+      <!-- Waybill Information -->
+      <column name="waybillnumber" type="VARCHAR(100)"/>
+      <column name="waybillexpirydate" type="TIMESTAMP"/>
+      <column name="waybillimage" type="VARCHAR(1024)"/>
+      
+      <!-- Material Information -->
+      <column name="material" type="VARCHAR(255)"/>
+      <column name="othermaterial" type="VARCHAR(255)"/>
+      
+      <!-- Invoice Information -->
+      <column name="invoicenumber" type="VARCHAR(100)"/>
+      <column name="invoicequantity" type="VARCHAR(50)"/>
+      
+      <!-- LR/GR Information -->
+      <column name="lrgrnumber" type="VARCHAR(100)"/>
+      
+      <!-- Card Number -->
+      <column name="cardnumber" type="VARCHAR(100)"/>
+      
+      <!-- Vehicle Information -->
+      <column name="vehicletype" type="VARCHAR(100)"/>
+      <column name="vehiclenumber" type="VARCHAR(50)"/>
+      
+      <!-- Location Tracking -->
+      <column name="latitude" type="DOUBLE"/>
+      <column name="longitude" type="DOUBLE"/>
+      <column name="speed" type="DOUBLE"/>
+      
+      <!-- Distance Tracking -->
+      <column name="totaldistance" type="DOUBLE"/>
+      <column name="distancecovered" type="DOUBLE"/>
+      
+      <!-- Waypoints -->
+      <column name="waypoint1" type="VARCHAR(255)"/>
+      <column name="waypoint2" type="VARCHAR(255)"/>
+      
+      <!-- Status Information -->
+      <column name="runningstatus" type="VARCHAR(100)"/>
+      <column name="datadelay" type="VARCHAR(50)"/>
+      
+      <!-- Device Information -->
+      <column name="devicetype" type="VARCHAR(50)"/>
+      <column name="ownmarket" type="VARCHAR(20)"/>
+      
+      <!-- Dates for SDA and DETA -->
+      <column name="sda" type="TIMESTAMP"/>
+      <column name="deta" type="TIMESTAMP"/>
+      
+      <!-- Metadata -->
+      <column name="attributes" type="VARCHAR(4000)"/>
+      <column name="createdat" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+      <column name="updatedat" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <!-- Create indexes for frequently queried fields -->
+    <createIndex tableName="tc_trips" indexName="idx_trips_deviceid">
+      <column name="deviceid"/>
+    </createIndex>
+    
+    <createIndex tableName="tc_trips" indexName="idx_trips_shipmentid">
+      <column name="shipmentid"/>
+    </createIndex>
+    
+    <createIndex tableName="tc_trips" indexName="idx_trips_departuredate">
+      <column name="departuredate"/>
+    </createIndex>
+
+  </changeSet>
+
+  <changeSet author="author" id="changelog-6.17.0-2">
+    <!-- Create permission tables for trips -->
+    
+    <!-- User-Trip permissions -->
+    <createTable tableName="tc_user_trip">
+      <column name="userid" type="INT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="tripid" type="INT">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <addForeignKeyConstraint baseTableName="tc_user_trip" baseColumnNames="userid"
+                             constraintName="fk_user_trip_userid"
+                             referencedTableName="tc_users" referencedColumnNames="id"
+                             onDelete="CASCADE"/>
+
+    <addForeignKeyConstraint baseTableName="tc_user_trip" baseColumnNames="tripid"
+                             constraintName="fk_user_trip_tripid"
+                             referencedTableName="tc_trips" referencedColumnNames="id"
+                             onDelete="CASCADE"/>
+
+    <createIndex tableName="tc_user_trip" indexName="idx_user_trip_userid">
+      <column name="userid"/>
+    </createIndex>
+
+    <createIndex tableName="tc_user_trip" indexName="idx_user_trip_tripid">
+      <column name="tripid"/>
+    </createIndex>
+
+    <!-- Device-Trip permissions -->
+    <createTable tableName="tc_device_trip">
+      <column name="deviceid" type="INT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="tripid" type="INT">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <addForeignKeyConstraint baseTableName="tc_device_trip" baseColumnNames="deviceid"
+                             constraintName="fk_device_trip_deviceid"
+                             referencedTableName="tc_devices" referencedColumnNames="id"
+                             onDelete="CASCADE"/>
+
+    <addForeignKeyConstraint baseTableName="tc_device_trip" baseColumnNames="tripid"
+                             constraintName="fk_device_trip_tripid"
+                             referencedTableName="tc_trips" referencedColumnNames="id"
+                             onDelete="CASCADE"/>
+
+    <createIndex tableName="tc_device_trip" indexName="idx_device_trip_deviceid">
+      <column name="deviceid"/>
+    </createIndex>
+
+    <createIndex tableName="tc_device_trip" indexName="idx_device_trip_tripid">
+      <column name="tripid"/>
+    </createIndex>
+
+    <!-- Group-Trip permissions -->
+    <createTable tableName="tc_group_trip">
+      <column name="groupid" type="INT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="tripid" type="INT">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <addForeignKeyConstraint baseTableName="tc_group_trip" baseColumnNames="groupid"
+                             constraintName="fk_group_trip_groupid"
+                             referencedTableName="tc_groups" referencedColumnNames="id"
+                             onDelete="CASCADE"/>
+
+    <addForeignKeyConstraint baseTableName="tc_group_trip" baseColumnNames="tripid"
+                             constraintName="fk_group_trip_tripid"
+                             referencedTableName="tc_trips" referencedColumnNames="id"
+                             onDelete="CASCADE"/>
+
+    <createIndex tableName="tc_group_trip" indexName="idx_group_trip_groupid">
+      <column name="groupid"/>
+    </createIndex>
+
+    <createIndex tableName="tc_group_trip" indexName="idx_group_trip_tripid">
+      <column name="tripid"/>
+    </createIndex>
+
+  </changeSet>
+
+</databaseChangeLog>

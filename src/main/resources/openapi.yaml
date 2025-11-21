@@ -51,6 +51,8 @@ tags:
     description: Drivers management
   - name: Maintenance
     description: Maintenance management
+  - name: Trips
+    description: Trip management and tracking
   - name: Calendars
     description: Calendar management
   - name: Statistics
@@ -465,6 +467,43 @@ paths:
   /permissions:
     post:
       summary: Link an Object to another Object
+      description: >-
+        Create a permission link between two objects. This endpoint is used to establish relationships 
+        such as assigning devices to users, linking drivers to devices, connecting geofences to groups, etc.
+
+
+        **Common Permission Patterns:**
+
+
+        **User Permissions:**
+        - User → Device: Give user access to a device
+        - User → Group: Give user access to a group
+        - User → Driver: Give user access to a driver
+        - User → Geofence: Give user access to a geofence
+        - User → Calendar: Link calendar to a user
+        - User → Notification: Link notification to a user
+        - User → Command: Give user access to a saved command
+        - User → Attribute: Link computed attribute to a user
+        - User → Maintenance: Link maintenance to a user
+        - User → User: Manager relationship (first user manages second user)
+
+
+        **Device Permissions:**
+        - Device → Driver: Assign driver to a device
+        - Device → Geofence: Link geofence to a device
+        - Device → Notification: Link notification to a device
+        - Device → Command: Link saved command to a device
+        - Device → Attribute: Link computed attribute to a device
+        - Device → Maintenance: Link maintenance schedule to a device
+
+
+        **Group Permissions:**
+        - Group → Driver: Assign driver to a group
+        - Group → Geofence: Link geofence to a group
+        - Group → Notification: Link notification to a group
+        - Group → Command: Link saved command to a group
+        - Group → Attribute: Link computed attribute to a group
+        - Group → Maintenance: Link maintenance to a group
       tags:
         - Permissions
       requestBody:
@@ -472,6 +511,139 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Permission"
+            examples:
+              userDevice:
+                summary: Link User to Device
+                description: Give a user access to a specific device
+                value:
+                  userId: 5
+                  deviceId: 123
+              userGroup:
+                summary: Link User to Group
+                description: Give a user access to a group of devices
+                value:
+                  userId: 5
+                  groupId: 10
+              userDriver:
+                summary: Link User to Driver
+                description: Give a user access to a driver profile
+                value:
+                  userId: 5
+                  driverId: 42
+              userGeofence:
+                summary: Link User to Geofence
+                description: Give a user access to a geofence
+                value:
+                  userId: 5
+                  geofenceId: 78
+              deviceDriver:
+                summary: Link Device to Driver
+                description: Assign a driver to a specific device
+                value:
+                  deviceId: 123
+                  driverId: 42
+              deviceGeofence:
+                summary: Link Device to Geofence
+                description: Associate a geofence with a device
+                value:
+                  deviceId: 123
+                  geofenceId: 78
+              deviceNotification:
+                summary: Link Device to Notification
+                description: Enable notifications for a device
+                value:
+                  deviceId: 123
+                  notificationId: 15
+              deviceCommand:
+                summary: Link Device to Command
+                description: Make a saved command available for a device
+                value:
+                  deviceId: 123
+                  commandId: 30
+              deviceAttribute:
+                summary: Link Device to Computed Attribute
+                description: Apply a computed attribute to a device
+                value:
+                  deviceId: 123
+                  attributeId: 8
+              deviceMaintenance:
+                summary: Link Device to Maintenance
+                description: Assign a maintenance schedule to a device
+                value:
+                  deviceId: 123
+                  maintenanceId: 20
+              groupDriver:
+                summary: Link Group to Driver
+                description: Assign a driver to all devices in a group
+                value:
+                  groupId: 10
+                  driverId: 42
+              groupGeofence:
+                summary: Link Group to Geofence
+                description: Associate a geofence with a group
+                value:
+                  groupId: 10
+                  geofenceId: 78
+              groupNotification:
+                summary: Link Group to Notification
+                description: Enable notifications for a group
+                value:
+                  groupId: 10
+                  notificationId: 15
+              groupCommand:
+                summary: Link Group to Command
+                description: Make a saved command available for a group
+                value:
+                  groupId: 10
+                  commandId: 30
+              groupAttribute:
+                summary: Link Group to Computed Attribute
+                description: Apply a computed attribute to a group
+                value:
+                  groupId: 10
+                  attributeId: 8
+              groupMaintenance:
+                summary: Link Group to Maintenance
+                description: Assign a maintenance schedule to a group
+                value:
+                  groupId: 10
+                  maintenanceId: 20
+              userCalendar:
+                summary: Link User to Calendar
+                description: Associate a calendar with a user
+                value:
+                  userId: 5
+                  calendarId: 3
+              userNotification:
+                summary: Link User to Notification
+                description: Enable notifications for a user
+                value:
+                  userId: 5
+                  notificationId: 15
+              userCommand:
+                summary: Link User to Command
+                description: Give user access to a saved command
+                value:
+                  userId: 5
+                  commandId: 30
+              userAttribute:
+                summary: Link User to Computed Attribute
+                description: Give user access to a computed attribute
+                value:
+                  userId: 5
+                  attributeId: 8
+              userMaintenance:
+                summary: Link User to Maintenance
+                description: Give user access to a maintenance schedule
+                value:
+                  userId: 5
+                  maintenanceId: 20
+              managerUser:
+                summary: Link Manager to User
+                description: Create a manager relationship (first user manages second)
+                value:
+                  userId: 3
+                  managedUserId: 5
         required: true
       responses:
         "204":
@@ -483,6 +655,9 @@ paths:
       x-codegen-request-body-name: body
     delete:
       summary: Unlink an Object from another Object
+      description: >-
+        Remove a permission link between two objects. This is the reverse operation of POST /permissions.
+        Use the same request body format as the POST request to remove the relationship.
       tags:
         - Permissions
       requestBody:
@@ -490,6 +665,25 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Permission"
+            examples:
+              unlinkUserDevice:
+                summary: Unlink User from Device
+                description: Remove user's access to a device
+                value:
+                  userId: 5
+                  deviceId: 123
+              unlinkDeviceDriver:
+                summary: Unlink Device from Driver
+                description: Remove driver assignment from a device
+                value:
+                  deviceId: 123
+                  driverId: 42
+              unlinkGroupDriver:
+                summary: Unlink Group from Driver
+                description: Remove driver from a group
+                value:
+                  groupId: 10
+                  driverId: 42
         required: true
       responses:
         "204":
@@ -1757,6 +1951,142 @@ paths:
         "204":
           description: No Content
           content: {}
+  /trips:
+    get:
+      summary: Fetch a list of Trips
+      description: Without params, it returns a list of Trips the user has access to
+      tags:
+        - Trips
+      parameters:
+        - name: all
+          in: query
+          description: Can only be used by admins or managers to fetch all entities
+          schema:
+            type: boolean
+        - name: userId
+          in: query
+          description: Standard users can use this only with their own _userId_
+          schema:
+            type: integer
+        - name: deviceId
+          in: query
+          description: >-
+            Standard users can use this only with _deviceId_s, they have access
+            to
+          schema:
+            type: integer
+        - name: groupId
+          in: query
+          description: >-
+            Standard users can use this only with _groupId_s, they have access
+            to
+          schema:
+            type: integer
+        - name: refresh
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Maximum number of results to return (default 100)
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+        - name: offset
+          in: query
+          description: Number of results to skip for pagination (default 0)
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trip"
+    post:
+      summary: Create a Trip
+      tags:
+        - Trips
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Trip"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+      x-codegen-request-body-name: body
+  /trips/{id}:
+    get:
+      summary: Fetch a single Trip by ID
+      tags:
+        - Trips
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "404":
+          description: Trip not found
+          content: {}
+    put:
+      summary: Update a Trip
+      tags:
+        - Trips
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Trip"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+      x-codegen-request-body-name: body
+    delete:
+      summary: Delete a Trip
+      tags:
+        - Trips
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
+          content: {}
 components:
   schemas:
     Position:
@@ -1944,8 +2274,12 @@ components:
           format: int64
         name:
           type: string
+          example: "KA35B5004"
+          description: "Asset name/identifier"
         uniqueId:
           type: string
+          example: "KA35B5004"
+          description: "Unique identifier for the device/asset"
         status:
           type: string
         disabled:
@@ -1963,6 +2297,8 @@ components:
           type: integer
           format: int64
           nullable: true
+          description: "Entity/Group ID (e.g., for KATARIA_MOVERS_BANG-DEDICATED)"
+          example: 1
         phone:
           type: string
           nullable: true
@@ -1977,7 +2313,191 @@ components:
           nullable: true
         attributes:
           type: object
-          properties: {}
+          properties:
+            assetType:
+              type: string
+              description: Type of asset/vehicle
+              example: "HEAVY VEHICLE"
+            assetIconType:
+              type: string
+              description: Icon type for asset display
+              example: "TRUCK"
+              enum:
+                [
+                  TRUCK,
+                  ARROW,
+                  BIKE,
+                  BUS,
+                  CAR,
+                  CCCAMERA,
+                  DOZER,
+                  DUMPER,
+                  FIREBRIGADE,
+                  FIREBRIGADE-B,
+                  FIREBRIGADE-X,
+                  FORKLIFT,
+                  GARBAGE,
+                  GASTANKER,
+                  HYVA,
+                  LOCO,
+                  MIXER,
+                  MILKTANKER,
+                  OILTANKER,
+                  SHIP,
+                  TRAILER,
+                  USER,
+                  VISITOR,
+                  WATER-TANKER,
+                  TRACTORTROLLEY,
+                  EXCAVATOR,
+                  AMBULANCE,
+                  LOADER,
+                  ROADGRADER,
+                  JCB,
+                  DRILL,
+                  BOLERO,
+                  CAMPER,
+                  SERVICEVAN,
+                  AUTOAPE,
+                  AUTORICKSHAW,
+                ]
+            gatePassValidity:
+              type: string
+              description: Gate pass validity date in DD-MM-YYYY format
+              example: "N/A"
+            assetCapacity:
+              type: string
+              description: Asset capacity
+              example: "NA"
+            assetMake:
+              type: string
+              description: Manufacturer of the asset
+              example: "N/A"
+            assetModel:
+              type: string
+              description: Model of the asset
+              example: "N/A"
+            batteryVolt:
+              type: string
+              description: Battery voltage
+              example: "N/A"
+            fuelType:
+              type: string
+              description: Type of fuel used
+              example: "N/A"
+            pollutionCertValidity:
+              type: string
+              description: Pollution certificate validity date in DD-MM-YYYY format
+              example: "N/A"
+            fitnessCertValidity:
+              type: string
+              description: Fitness certificate validity date in DD-MM-YYYY format
+              example: "29-02-2024"
+            manufacturingYear:
+              type: string
+              description: Year of manufacturing
+              example: "NA"
+            registrationDate:
+              type: string
+              description: Registration date in DD-MM-YYYY format
+              example: "05-10-2015"
+            insuranceValidity:
+              type: string
+              description: Insurance validity date in DD-MM-YYYY format
+              example: "26-02-2023"
+            transporterName:
+              type: string
+              description: Associated transporter name
+              example: "NA"
+            batteryPurchase:
+              type: string
+              description: Battery purchase date in DD-MM-YYYY format
+              example: "N/A"
+            batteryExpiry:
+              type: string
+              description: Battery expiry date in DD-MM-YYYY format
+              example: "N/A"
+            standardKmDay:
+              type: string
+              description: Standard kilometers per day
+              example: "N/A"
+            pesoLicense:
+              type: string
+              description: PESO license validity date in DD-MM-YYYY format
+              example: "N/A"
+            rule18:
+              type: string
+              description: Rule 18 validity date in DD-MM-YYYY format
+              example: "N/A"
+            rule19:
+              type: string
+              description: Rule 19 validity date in DD-MM-YYYY format
+              example: "N/A"
+            rcValidity:
+              type: string
+              description: RC validity date in DD-MM-YYYY format
+              example: "N/A"
+            fndDeviceId:
+              type: string
+              description: FND Device ID
+              example: "N/A"
+            siteLocation:
+              type: string
+              description: Site or location information
+              example: "N/A"
+            statePermitValidity:
+              type: string
+              description: State permit validity date in DD-MM-YYYY format
+              example: "03-03-2026"
+            nationalPermitValidity:
+              type: string
+              description: National permit validity date in DD-MM-YYYY format
+              example: "03-04-2023"
+            roadTaxValidity:
+              type: string
+              description: Road tax validity date in DD-MM-YYYY format
+              example: "05-07-2024"
+            goodsTaxValidity:
+              type: string
+              description: Goods tax validity date in DD-MM-YYYY format
+              example: "N/A"
+            tareWeight:
+              type: string
+              description: Tare weight in kilograms
+              example: "N/A"
+            grossWeight:
+              type: string
+              description: Gross weight in kilograms
+              example: "N/A"
+            customerRemark:
+              type: string
+              description: Customer remarks or notes
+              example: "N/A"
+            setStatus:
+              type: string
+              description: Status of the asset
+              example: "ACTIVE"
+              enum: [ACTIVE, INACTIVE]
+            pollutionCertFile:
+              type: string
+              description: Path to pollution certificate file (image)
+              example: "device123/pollution.jpg"
+            fitnessCertFile:
+              type: string
+              description: Path to fitness certificate file (image)
+              example: "device123/fitness.jpg"
+            loadTestCertFile:
+              type: string
+              description: Path to load test certificate file (image)
+              example: "device123/loadtest.jpg"
+            insuranceCertFile:
+              type: string
+              description: Path to insurance certificate file (image)
+              example: "device123/insurance.jpg"
+            registrationCertFile:
+              type: string
+              description: Path to registration certificate file (image)
+              example: "device123/registration.jpg"
     Group:
       type: object
       properties:
@@ -1986,6 +2506,8 @@ components:
           format: int64
         name:
           type: string
+          example: "KATARIA_MOVERS_BANG-DEDICATED"
+          description: "Entity/Group name (e.g., company name or organization)"
         groupId:
           type: integer
           format: int64
@@ -1998,55 +2520,81 @@ components:
         userId:
           type: integer
           format: int64
-          description: User id, can be only first parameter
+          description: >-
+            User ID (first parameter). Can link to: Device, Group, Driver, Geofence, 
+            Notification, Calendar, Command, Attribute, Maintenance, or ManagedUser.
         deviceId:
           type: integer
           format: int64
           description: >-
-            Device id, can be first parameter or second only in combination with
-            userId
+            Device ID. As first parameter: can link to Driver, Geofence, Notification, 
+            Command, Attribute, or Maintenance. As second parameter: only with userId.
         groupId:
           type: integer
           format: int64
           description: >-
-            Group id, can be first parameter or second only in combination with
-            userId
+            Group ID. As first parameter: can link to Driver, Geofence, Notification, 
+            Command, Attribute, or Maintenance. As second parameter: only with userId.
+        driverId:
+          type: integer
+          format: int64
+          description: >-
+            Driver ID (second parameter only). Can be linked from: User, Device, or Group.
         geofenceId:
           type: integer
           format: int64
-          description: Geofence id, can be second parameter only
+          description: >-
+            Geofence ID (second parameter only). Can be linked from: User, Device, or Group.
         notificationId:
           type: integer
           format: int64
-          description: Notification id, can be second parameter only
+          description: >-
+            Notification ID (second parameter only). Can be linked from: User, Device, or Group.
         calendarId:
           type: integer
           format: int64
           description: >-
-            Calendar id, can be second parameter only and only in combination
-            with userId
+            Calendar ID (second parameter only). Can only be linked from: User.
         attributeId:
           type: integer
           format: int64
-          description: Computed attribute id, can be second parameter only
-        driverId:
+          description: >-
+            Computed Attribute ID (second parameter only). Can be linked from: User, Device, or Group.
+        commandId:
           type: integer
           format: int64
-          description: Driver id, can be second parameter only
+          description: >-
+            Saved Command ID (second parameter only). Can be linked from: User, Device, or Group.
+        maintenanceId:
+          type: integer
+          format: int64
+          description: >-
+            Maintenance ID (second parameter only). Can be linked from: User, Device, or Group.
         managedUserId:
           type: integer
           format: int64
           description: >-
-            User id, can be second parameter only and only in combination with
-            userId
-        commandId:
-          type: integer
-          format: int64
-          description: Saved command id, can be second parameter only
+            Managed User ID (second parameter only). Can only be linked from: User 
+            (creates a manager relationship where first user manages second user).
       description: >-
-        This is a permission map that contain two object indexes. It is used to
-        link/unlink objects. Order is important. Example: { deviceId:8,
-        geofenceId: 16 }
+        Permission object for linking two entities. Must contain exactly TWO properties 
+        forming an owner → property relationship. Order matters: first property is the 
+        "owner" and second is the "property" being linked. 
+
+
+        Valid owner types (first parameter): User, Device, or Group.
+
+        Valid property types (second parameter): Device, Group, Driver, Geofence, 
+        Notification, Calendar, Command, Attribute, Maintenance, or ManagedUser.
+
+
+        Examples: 
+
+        - {"userId": 5, "deviceId": 123} - User 5 gets access to Device 123
+
+        - {"deviceId": 123, "driverId": 42} - Driver 42 is assigned to Device 123
+
+        - {"groupId": 10, "geofenceId": 78} - Geofence 78 is linked to Group 10
     CommandType:
       type: object
       properties:
@@ -2309,6 +2857,215 @@ components:
         attributes:
           type: object
           properties: {}
+    Trip:
+      type: object
+      required:
+        - deviceId
+        - consignorId
+        - consigneeId
+        - departureDate
+        - etaDate
+        - origin
+        - destination
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        name:
+          type: string
+          description: Trip name or identifier (optional)
+        deviceId:
+          type: integer
+          format: int64
+          description: "Device ID (required) - backend will auto-fill assetNumber and assetType from this device"
+        assetNumber:
+          type: string
+          description: Asset number (auto-filled from device uniqueId)
+          readOnly: true
+        assetType:
+          type: string
+          description: Type of asset (auto-filled from device attribute 'assetType')
+          readOnly: true
+        transporterName:
+          type: string
+          description: Name of the transporter (auto-filled from device's group name)
+          readOnly: true
+        otherTransporterName:
+          type: string
+          description: Other transporter name if custom entry needed
+        consignorId:
+          type: integer
+          format: int64
+          description: "Consignor user ID (required) - Use actual userId or a special value for 'other'"
+        consignorName:
+          type: string
+          description: Name of the consignor (auto-filled from user if userId provided)
+          readOnly: true
+        otherConsignorName:
+          type: string
+          description: Custom consignor name (required if consignorId doesn't match an existing user)
+        consigneeId:
+          type: integer
+          format: int64
+          description: "Consignee user ID (required) - Use actual userId or a special value for 'other'"
+        consigneeName:
+          type: string
+          description: Name of the consignee (auto-filled from user if userId provided)
+          readOnly: true
+        otherConsigneeName:
+          type: string
+          description: Custom consignee name (required if consigneeId doesn't match an existing user)
+        consigneePincode:
+          type: string
+          description: Consignee PIN code (optional)
+        origin:
+          type: string
+          description: Origin location as text (required)
+        destination:
+          type: string
+          description: Destination location as text (required)
+        departureDate:
+          type: string
+          format: date-time
+          description: Departure date and time in ISO 8601 format (required, 24-hour format)
+        etaDate:
+          type: string
+          format: date-time
+          description: Estimated time of arrival in ISO 8601 format (required, 24-hour format)
+        bookingDate:
+          type: string
+          format: date-time
+          description: Booking date and time in ISO 8601 format (optional)
+        driverNumber:
+          type: string
+          description: "Driver unique number/ID for dropdown selection (optional) - backend will auto-fill driver details"
+        driverName:
+          type: string
+          description: Driver name (auto-filled from driver record)
+          readOnly: true
+        driverMobile:
+          type: string
+          description: Driver mobile number (optional)
+        driverContact:
+          type: string
+          description: Driver contact number (auto-filled from driver attributes)
+          readOnly: true
+        driverLicense:
+          type: string
+          description: Driver license number (auto-filled from driver attributes)
+          readOnly: true
+        driverId:
+          type: integer
+          format: int64
+          description: Driver ID if linked to driver entity (optional)
+        shipperName:
+          type: string
+          description: Shipper name (optional)
+        shipmentId:
+          type: string
+          description: Unique shipment ID (optional)
+        waybillNumber:
+          type: string
+          description: Waybill/LR number (optional)
+        waybillExpiryDate:
+          type: string
+          format: date-time
+          description: Waybill expiry date in ISO 8601 format (optional)
+        waybillImage:
+          type: string
+          description: Path or URL to waybill image (optional)
+        material:
+          type: string
+          description: Material type being transported (optional)
+        otherMaterial:
+          type: string
+          description: Other material if "OTHERS" is selected (optional)
+        invoiceNumber:
+          type: string
+          description: Invoice number (optional)
+        invoiceQuantity:
+          type: string
+          description: Invoice quantity (e.g., in MT) (optional)
+        lrGrNumber:
+          type: string
+          description: LR/GR number (optional)
+        cardNumber:
+          type: string
+          description: Card number (optional)
+        vehicleType:
+          type: string
+          description: Type of vehicle (optional)
+        vehicleNumber:
+          type: string
+          description: Vehicle registration number (optional)
+        latitude:
+          type: number
+          format: double
+          description: Current latitude (auto-updated by tracking system)
+          readOnly: true
+        longitude:
+          type: number
+          format: double
+          description: Current longitude (auto-updated by tracking system)
+          readOnly: true
+        speed:
+          type: number
+          format: double
+          description: Current speed in km/h (auto-updated by tracking system)
+          readOnly: true
+        totalDistance:
+          type: number
+          format: double
+          description: Total distance in kilometers (calculated)
+          readOnly: true
+        distanceCovered:
+          type: number
+          format: double
+          description: Distance covered in kilometers (calculated)
+          readOnly: true
+        waypoint1:
+          type: string
+          description: First waypoint (optional)
+        waypoint2:
+          type: string
+          description: Second waypoint (optional)
+        runningStatus:
+          type: string
+          description: Running status of the trip (auto-set to 'pending' initially)
+          readOnly: true
+        dataDelay:
+          type: string
+          description: Data delay information (auto-updated)
+          readOnly: true
+        deviceType:
+          type: string
+          description: Type of device - Permanent, Temporary (optional)
+        ownMarket:
+          type: string
+          description: Own or Market vehicle (optional)
+        sda:
+          type: string
+          format: date-time
+          description: SDA (Scheduled Departure Actual) date (optional)
+        deta:
+          type: string
+          format: date-time
+          description: DETA (Destination Estimated Time Actual) date (optional)
+        createdAt:
+          type: string
+          format: date-time
+          description: Trip creation timestamp (auto-generated by backend)
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          description: Trip last update timestamp (auto-generated by backend)
+          readOnly: true
+        attributes:
+          type: object
+          properties: {}
+          description: Custom attributes for the trip (optional)
   parameters:
     entityId:
       name: id
