@@ -11,7 +11,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   version: "6.9.1"
 servers:
-  - url: http://51.21.203.186:8082/api
+  - url: https://api.driversaathi.com/api
     description: Production Server
   - url: https://server.drivesaathi.com/api
     description: Subscription Server
@@ -2087,6 +2087,26 @@ paths:
         "204":
           description: No Content
           content: {}
+  /vehicleData:
+    post:
+      summary: Fetch Vehicle Data
+      description: Returns detailed vehicle data filtered by company names, vehicle numbers, or IMEI numbers. If no filters are provided, returns data for all accessible devices.
+      tags:
+        - Devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleDataRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VehicleDataResponse"
+      x-codegen-request-body-name: body
 components:
   schemas:
     Position:
@@ -3101,6 +3121,171 @@ components:
           type: object
           properties: {}
           description: Custom attributes for the trip (optional)
+    VehicleDataRequest:
+      type: object
+      properties:
+        company_names:
+          type: string
+          description: Comma-separated list of company names to filter vehicles (optional)
+        vehicle_nos:
+          type: string
+          description: Comma-separated list of vehicle numbers to filter vehicles (optional)
+        imei_nos:
+          type: string
+          description: Comma-separated list of IMEI numbers to filter vehicles (optional)
+    VehicleDataResponse:
+      type: object
+      properties:
+        root:
+          type: object
+          properties:
+            VehicleData:
+              type: array
+              items:
+                $ref: "#/components/schemas/VehicleData"
+    VehicleData:
+      type: object
+      properties:
+        Vehicle_Name:
+          type: string
+          description: Device name
+        Company:
+          type: string
+          description: Company name from device attributes
+        Temperature:
+          type: string
+          description: Device temperature
+        heartbeat:
+          type: string
+          description: Heartbeat status
+        Latitude:
+          type: string
+          description: Current latitude position
+        GPS:
+          type: string
+          description: GPS status
+        mcc:
+          type: string
+          description: Mobile Country Code
+        cellid:
+          type: string
+          description: Cell tower ID
+        lac:
+          type: string
+          description: Location Area Code
+        Vehicle_No:
+          type: string
+          description: Vehicle registration number
+        Door1:
+          type: string
+          description: Door 1 status
+        elock:
+          type: string
+          description: Electronic lock status
+        Door4:
+          type: string
+          description: Door 4 status
+        Branch:
+          type: string
+          description: Branch from device attributes
+        Vehicletype:
+          type: string
+          description: Vehicle type from device attributes
+        Door2:
+          type: string
+          description: Door 2 status
+        Door3:
+          type: string
+          description: Door 3 status
+        course:
+          type: string
+          description: Movement direction/course
+        GPSActualTime:
+          type: string
+          description: GPS fix time in format dd-MM-yyyy HH:mm:ss
+        Datetime:
+          type: string
+          description: Last device update time in format dd-MM-yyyy HH:mm:ss
+        Status:
+          type: string
+          description: Device status (online/offline)
+        DeviceModel:
+          type: string
+          description: Device model
+        Speed:
+          type: string
+          description: Current speed in km/h
+        AC:
+          type: string
+          description: Air conditioning status
+        mnc:
+          type: string
+          description: Mobile Network Code
+        Imeino:
+          type: string
+          description: IMEI number (unique device identifier)
+        gps_hdop:
+          type: string
+          description: GPS Horizontal Dilution of Precision
+        Odometer:
+          type: string
+          description: Odometer reading
+        POI:
+          type: string
+          description: Point of Interest
+        Driver_Middle_Name:
+          type: string
+          description: Driver middle name from device attributes
+        Longitude:
+          type: string
+          description: Current longitude position
+        Immobilize_State:
+          type: string
+          description: Vehicle immobilization state
+        IGN:
+          type: string
+          description: Ignition status
+        satellite_count:
+          type: integer
+          description: Number of GPS satellites
+        Driver_First_Name:
+          type: string
+          description: Driver first name from device attributes
+        Angle:
+          type: string
+          description: Movement angle/course
+        "Ibutton/RFID":
+          type: string
+          description: iButton or RFID identifier
+        SOS:
+          type: string
+          description: SOS alarm status
+        Fuel:
+          type: array
+          description: Fuel level readings
+          items:
+            type: string
+        battery_percentage:
+          type: integer
+          description: Battery level percentage
+        ExternalVolt:
+          type: string
+          description: External voltage reading
+        Driver_Last_Name:
+          type: string
+          description: Driver last name from device attributes
+        Power:
+          type: string
+          description: Power status
+        username:
+          type: string
+          description: Username from device attributes
+        Location:
+          type: string
+          description: Current address/location
+        Altitude:
+          type: string
+          description: Current altitude
   parameters:
     entityId:
       name: id
