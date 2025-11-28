@@ -649,7 +649,7 @@ public class VehicleDataResource {
                         if (position != null) {
                                 vehicle.setLatitude(String.valueOf(position.getLatitude()));
                                 vehicle.setLongitude(String.valueOf(position.getLongitude()));
-                                vehicle.setSpeed(position.getSpeed() <= 0.01
+                                vehicle.setSpeed(position.getSpeed() > 0.01
                                                 ? String.valueOf(Math.round(position.getSpeed() * 1.852))
                                                 : "0");
                                 vehicle.setGpsActualTime(position.getFixTime() != null
@@ -702,11 +702,19 @@ public class VehicleDataResource {
                                                                                 .intValue()
                                                                 : 0);
 
-                                vehicle.setTemperature(position.getAttributes() != null
-                                                && position.getAttributes().get(Position.KEY_DEVICE_TEMP) != null
-                                                                ? position.getAttributes().get(Position.KEY_DEVICE_TEMP)
-                                                                                .toString()
-                                                                : "--");
+                                String temperature = "--";
+                                if (position.getAttributes() != null) {
+                                        Object tempObj = null;
+                                        if (position.getAttributes().get(Position.KEY_DEVICE_TEMP) != null) {
+                                                tempObj = position.getAttributes().get(Position.KEY_DEVICE_TEMP);
+                                        } else if (position.getAttributes().get("temp1") != null) {
+                                                tempObj = position.getAttributes().get("temp1");
+                                        }
+                                        if (tempObj != null) {
+                                                temperature = tempObj.toString();
+                                        }
+                                }
+                                vehicle.setTemperature(temperature);
                                 vehicle.setHeartbeat(position.getAttributes().get("heartbeat") != null
                                                 ? position.getAttributes().get("heartbeat").toString()
                                                 : "no");
