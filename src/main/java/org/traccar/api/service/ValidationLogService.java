@@ -39,7 +39,7 @@ public class ValidationLogService {
 
     /**
      * Log a successful validation entry
-     * 
+     *
      * @param userId         The user ID
      * @param validationType "license" or "vehicle"
      * @param number         The DL number or vehicle registration number

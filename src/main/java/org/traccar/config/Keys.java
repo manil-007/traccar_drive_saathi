@@ -1756,10 +1756,11 @@ public final class Keys {
 
         /**
          * Enable new instances creation.
-         * When disabled, parsing a script/expression using 'new(...)' will throw a
-         * parsing exception;
+         * When disabled, parsing a script/expression using 'new(...)' will throw
+         * a parsing exception;
          */
-        public static final ConfigKey<Boolean> PROCESSING_COMPUTED_ATTRIBUTES_NEW_INSTANCE_CREATION = new BooleanConfigKey(
+        public static final ConfigKey<Boolean> PROCESSING_COMPUTED_ATTRIBUTES_NEW_INSTANCE_CREATION =
+                new BooleanConfigKey(
                         "processing.computedAttributes.newInstanceCreation",
                         List.of(KeyType.CONFIG));
 

@@ -553,10 +553,10 @@ public class VehicleDataResource {
                 }
         }
 
-        
+
         @POST
         public Response getVehicleData(@Context HttpHeaders headers, VehicleDataRequest request) throws Exception {
-                
+
                 VehicleDataResponse response = new VehicleDataResponse();
 
                 Set<String> imeiSet = new HashSet<>();

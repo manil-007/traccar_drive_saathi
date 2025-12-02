@@ -10,8 +10,6 @@ import jakarta.ws.rs.core.Response;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
-import com.google.inject.RestrictedBindingSource.Permit;
-
 @Path("docs")
 public class SwaggerResource {
     @PermitAll

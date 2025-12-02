@@ -3,7 +3,12 @@
  */
 package org.traccar.api.resource;
 
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.json.JSONArray;
@@ -19,7 +24,11 @@ import org.traccar.storage.query.Order;
 import org.traccar.storage.query.Request;
 
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -30,7 +39,7 @@ public class ValidationLogResource extends BaseResource {
 
     private static final SimpleDateFormat INPUT_DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy");
     private static final SimpleDateFormat OUTPUT_DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
-    
+
     static {
         // Set IST timezone for all date operations
         TimeZone istTimeZone = TimeZone.getTimeZone("Asia/Kolkata");
@@ -103,9 +112,6 @@ public class ValidationLogResource extends BaseResource {
                     if (mapping != null && upperTransporterName.equals(mapping.getTransporterName())) {
                         filteredLogs.add(log);
                     }
-                } else {
-                    // For license validations, no transporter filter applies
-                    // Skip them when transporter filter is active
                 }
             }
         }
@@ -120,7 +126,8 @@ public class ValidationLogResource extends BaseResource {
             item.put("id", log.getId());
             item.put("validationType", log.getValidationType());
             item.put("number", log.getNumber());
-            item.put("validationDate", log.getValidationDate() != null ? OUTPUT_DATE_FORMAT.format(log.getValidationDate()) : JSONObject.NULL);
+            item.put("validationDate", log.getValidationDate() != null
+            ? OUTPUT_DATE_FORMAT.format(log.getValidationDate()) : JSONObject.NULL);
             item.put("status", log.getStatus());
 
             // Add transporter name if it's a vehicle validation

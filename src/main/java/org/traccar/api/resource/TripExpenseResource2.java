@@ -128,7 +128,7 @@ public class TripExpenseResource2 {
             if (hasText == hasCoords) { // either both true or both false
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(Map.of("error",
-                                "Please provide either 'start' and 'destination' (text) OR 'start_coord' and 'dest_coord' (coordinates), but not both"))
+                                "Please provide either text OR coordinates, but not both"))
                         .build();
             }
 
@@ -207,7 +207,6 @@ public class TripExpenseResource2 {
             // load tolls and compute tolls along route
             List<Map<String, Object>> tolls = loadTollsResource("data/nhai_toll_data.json");
             /*
-             * //TODO: fuel simulation
              * Fuel simulation per user's rules
              * (Commented out for now so original algorithm can be restored later)
              *
@@ -217,17 +216,14 @@ public class TripExpenseResource2 {
             /*
              * List<Map<String, Object>> refuels = new ArrayList<>();
              * double totalFuelCost = 0.0;
-             * 
              * double remaining = startFuel; // litres
              * int pointIndex = 0;
              * int totalPoints = points.size();
              * double pointsPerKm = 6.0; // ORS approx 6 points/km
-             * 
              * LOGGER.
              * info("Starting fuel simulation: totalPoints={}, distance_km={}, startFuel={}L, capacity={}L, mileage={}"
              * ,
              * totalPoints, distanceKm, remaining, fuelTankCapacity, mileage);
-             * 
              * while (pointIndex < totalPoints) {
              * // Evaluate at every 5th point
              * if (pointIndex % 5 == 0) {
@@ -236,7 +232,6 @@ public class TripExpenseResource2 {
              * double fuelPercent = (remaining / fuelTankCapacity) * 100.0;
              * LOGGER.info("Fuel check at point {} (km={}): remaining={}L ({}%)",
              * pointIndex, round(kmAtPoint, 2), round(remaining, 2), round(fuelPercent, 1));
-             * 
              * if (remaining <= fuelTankCapacity * 0.5 + 1e-9) {
              * // compute search window using 25% of tank * mileage (km)
              * double max_distance_km = 0.25 * fuelTankCapacity * mileage;
@@ -249,12 +244,10 @@ public class TripExpenseResource2 {
              * ,
              * pointIndex, round(max_distance_km, 2), search_window_points, windowStart,
              * windowEnd);
-             * 
              * // find reachable cities within 35 km of any route point in window
              * Map<Map<String, Object>, Double> reachable = new HashMap<>();
              * double nearestDist = Double.MAX_VALUE;
              * Map<String, Object> nearestCity = null;
-             * 
              * for (int pi = windowStart; pi <= windowEnd; pi++) {
              * var pt = points.get(pi);
              * for (var city : fuelPrices) {
@@ -273,7 +266,6 @@ public class TripExpenseResource2 {
              * }
              * }
              * }
-             * 
              * Map<String, Object> chosenCity = null;
              * String chooseReason = "";
              * if (!reachable.isEmpty()) {
@@ -285,18 +277,15 @@ public class TripExpenseResource2 {
              * chosenCity = nearestCity;
              * chooseReason = "nearest_fallback";
              * }
-             * 
              * if (chosenCity != null) {
              * double price = toDouble(chosenCity.get("price"));
              * String cname = chosenCity.getOrDefault("city", "<unknown>").toString();
              * String cstate = chosenCity.getOrDefault("state", "").toString();
              * double distanceFromRoute = reachable.containsKey(chosenCity) ?
              * reachable.get(chosenCity) : nearestDist;
-             * 
              * LOGGER.
              * info("Selected refuel city {} ({}) reason={} price={} distanceFromRoute={}km"
              * , cname, cstate, chooseReason, price, round(distanceFromRoute, 2));
-             * 
              * double before = remaining;
              * double target = fuelTankCapacity * 0.9;
              * double toFill = Math.max(0.0, target - remaining);
@@ -316,7 +305,6 @@ public class TripExpenseResource2 {
              * LOGGER.info("No fuel needed at chosen city {} (already at {}% capacity)",
              * cname, round((remaining / fuelTankCapacity) * 100.0, 1));
              * }
-             * 
              * int jump_points = Math.max(1, (int) Math.round(0.40 * fuelTankCapacity *
              * mileage * 5.0));
              * int oldIdx = pointIndex;
@@ -345,16 +333,13 @@ public class TripExpenseResource2 {
              * }
              * }
              * }
-             * 
              * // Advance one point and consume fuel accordingly
              * double kmPerPoint = 1.0 / pointsPerKm;
              * double consume = (kmPerPoint) / mileage;
              * remaining = Math.max(0.0, remaining - consume);
              * pointIndex++;
              * }
-             * 
              */
-
             // initialize toll accumulators
             String tollKey = mapVehicleType(vehicleType);
             double tollTotal = 0.0;
@@ -393,7 +378,7 @@ public class TripExpenseResource2 {
 
             // detect per-litre user price if provided (alternative to fuel_cost)
             Double userPerLitrePrice = null;
-            for (String key : new String[] { "fuel_price", "fuel_rate", "price_per_litre" }) {
+            for (String key : new String[]{"fuel_price", "fuel_rate", "price_per_litre"}) {
                 if (payload.containsKey(key)) {
                     double v = toDouble(payload.get(key));
                     if (v > 0) {
@@ -457,8 +442,9 @@ public class TripExpenseResource2 {
             try {
                 java.util.Set<Object> seen = new java.util.HashSet<>();
                 for (var toll : tolls) {
-                    if (toll == null)
+                    if (toll == null) {
                         continue;
+                    }
 
                     Object locObj = toll.get("location");
                     double tollLat = Double.NaN, tollLon = Double.NaN;
@@ -491,17 +477,20 @@ public class TripExpenseResource2 {
                     }
 
                     // skip invalid locations
-                    if (Double.isNaN(tollLat) || Double.isNaN(tollLon) || (tollLat == 0.0 && tollLon == 0.0))
+                    if (Double.isNaN(tollLat) || Double.isNaN(tollLon) || (tollLat == 0.0 && tollLon == 0.0)) {
                         continue;
+                    }
 
                     double minDist = minDistanceToRoute(tollLat, tollLon, points); // km
                     // threshold: consider toll on-route if within 2 km (adjustable)
                     if (minDist <= 2.0) {
                         Object id = toll.getOrDefault("id", toll.get("name"));
-                        if (id != null && seen.contains(id))
+                        if (id != null && seen.contains(id)) {
                             continue;
-                        if (id != null)
+                        }
+                        if (id != null) {
                             seen.add(id);
+                        }
 
                         double fee = extractTollFee(toll, tollKey);
                         if (fee > 0.0) {
@@ -550,8 +539,9 @@ public class TripExpenseResource2 {
             double kmPerDay = toDouble(payload.get("kilometers_per_day"));
             // duration rounded up to nearest whole day
             journeyDays = (int) Math.ceil(distanceKm / kmPerDay);
-            if (journeyDays < 1)
+            if (journeyDays < 1) {
                 journeyDays = 1;
+            }
 
             // da_amount_per_day is optional; if provided, compute total DA, otherwise 0
             double daPerDay = payload.containsKey("da_amount_per_day") && payload.get("da_amount_per_day") != null
@@ -762,12 +752,14 @@ public class TripExpenseResource2 {
                 .GET()
                 .build();
         HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
-        if (resp.statusCode() != 200)
+        if (resp.statusCode() != 200) {
             return null;
+        }
         var obj = new org.json.JSONObject(resp.body());
         var features = obj.getJSONArray("features");
-        if (features.length() == 0)
+        if (features.length() == 0) {
             return null;
+        }
         var feat = features.getJSONObject(0);
         var geom = feat.getJSONObject("geometry");
         var coords = geom.getJSONArray("coordinates");
@@ -800,14 +792,17 @@ public class TripExpenseResource2 {
             }
             var obj = new org.json.JSONObject(resp.body());
             var features = obj.optJSONArray("features");
-            if (features == null || features.length() == 0)
+            if (features == null || features.length() == 0) {
                 return null;
+            }
             var feat = features.getJSONObject(0);
-            if (!feat.has("geometry"))
+            if (!feat.has("geometry")) {
                 return null;
+            }
             var geom = feat.getJSONObject("geometry");
-            if (!geom.has("coordinates"))
+            if (!geom.has("coordinates")) {
                 return null;
+            }
             var coords = geom.getJSONArray("coordinates");
             double rlon = coords.getDouble(0);
             double rlat = coords.getDouble(1);
@@ -842,10 +837,12 @@ public class TripExpenseResource2 {
 
     // convert various numeric object representations to double
     private double toDouble(Object o) {
-        if (o == null)
+        if (o == null) {
             return 0.0;
-        if (o instanceof Number)
+        }
+        if (o instanceof Number) {
             return ((Number) o).doubleValue();
+        }
         try {
             return Double.parseDouble(o.toString());
         } catch (Exception e) {
@@ -855,8 +852,9 @@ public class TripExpenseResource2 {
 
     private List<Map<String, Object>> loadTollsResource(String path) {
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
-            if (is == null)
+            if (is == null) {
                 return List.of();
+            }
             String text = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
                     .collect(Collectors.joining("\n"));
             var obj = new org.json.JSONObject(text);
@@ -893,8 +891,9 @@ public class TripExpenseResource2 {
 
     private List<Map<String, Object>> loadFuelPricesResource(String path, String fuelType) {
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
-            if (is == null)
+            if (is == null) {
                 return List.of();
+            }
             String text = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)).lines()
                     .collect(Collectors.joining("\n"));
             var obj = new org.json.JSONObject(text);
@@ -904,11 +903,13 @@ public class TripExpenseResource2 {
                 var citiesObj = obj.getJSONObject(state);
                 for (var city : citiesObj.keySet()) {
                     var cityObj = citiesObj.getJSONObject(city);
-                    if (!cityObj.has(fuelType))
+                    if (!cityObj.has(fuelType)) {
                         continue;
+                    }
                     Object priceObj = cityObj.isNull(fuelType) ? null : cityObj.get(fuelType);
-                    if (priceObj == null)
+                    if (priceObj == null) {
                         continue;
+                    }
                     double price = toDouble(priceObj);
                     Map<String, Object> m = new HashMap<>();
                     m.put("state", state);
@@ -972,8 +973,9 @@ public class TripExpenseResource2 {
     // }
 
     private String mapVehicleType(String t) {
-        if (t == null)
+        if (t == null) {
             return "car";
+        }
         t = t.toLowerCase();
         return switch (t) {
             case "car", "van", "jeep" -> "car";
@@ -991,20 +993,21 @@ public class TripExpenseResource2 {
         double min = Double.MAX_VALUE;
         for (var p : routePoints) {
             double d = haversine(lat, lon, p.get(1), p.get(0));
-            if (d < min)
+            if (d < min) {
                 min = d;
+            }
         }
         return min;
     }
 
     private double haversine(double lat1, double lon1, double lat2, double lon2) {
-        double R = 6371; // km
+        double earthRadius = 6371; // km
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat1))
                 * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+        return earthRadius * c;
     }
 
     private double round(double v, int places) {
@@ -1017,8 +1020,9 @@ public class TripExpenseResource2 {
      * Handles nested shapes like: { fees: { car: { single: 100 } } }
      */
     private double extractTollFee(Map<String, Object> toll, String tollKey) {
-        if (toll == null)
+        if (toll == null) {
             return 0.0;
+        }
         try {
             Object feesObj = toll.get("fees");
             if (feesObj instanceof Map) {
@@ -1027,8 +1031,9 @@ public class TripExpenseResource2 {
                 if (vehicleObj instanceof Map) {
                     Map<?, ?> veh = (Map<?, ?>) vehicleObj;
                     Object single = veh.get("single");
-                    if (single instanceof Number)
+                    if (single instanceof Number) {
                         return ((Number) single).doubleValue();
+                    }
                     if (single instanceof String) {
                         try {
                             return Double.parseDouble((String) single);
@@ -1036,10 +1041,11 @@ public class TripExpenseResource2 {
                         }
                     }
                     // fallback: check common keys
-                    for (String k : new String[] { "single", "singleFare", "fare", "amount" }) {
+                    for (String k : new String[]{"single", "singleFare", "fare", "amount"}) {
                         Object o = veh.get(k);
-                        if (o instanceof Number)
+                        if (o instanceof Number) {
                             return ((Number) o).doubleValue();
+                        }
                         if (o instanceof String) {
                             try {
                                 return Double.parseDouble((String) o);
@@ -1050,8 +1056,9 @@ public class TripExpenseResource2 {
                 }
                 // if fees contains tollKey as a number directly
                 Object direct = fees.get(tollKey);
-                if (direct instanceof Number)
+                if (direct instanceof Number) {
                     return ((Number) direct).doubleValue();
+                }
                 if (direct instanceof String) {
                     try {
                         return Double.parseDouble((String) direct);
@@ -1062,8 +1069,9 @@ public class TripExpenseResource2 {
 
             // older datasets may have fee at top level under vehicle key
             Object top = toll.get(tollKey);
-            if (top instanceof Number)
+            if (top instanceof Number) {
                 return ((Number) top).doubleValue();
+            }
             if (top instanceof String) {
                 try {
                     return Double.parseDouble((String) top);
@@ -1082,8 +1090,9 @@ public class TripExpenseResource2 {
      */
     private List<List<Double>> decodePolyline(String encoded, int precision) {
         List<List<Double>> path = new ArrayList<>();
-        if (encoded == null || encoded.isEmpty())
+        if (encoded == null || encoded.isEmpty()) {
             return path;
+        }
         int index = 0;
         int len = encoded.length();
         int lat = 0, lng = 0;
@@ -1129,8 +1138,9 @@ public class TripExpenseResource2 {
      * or a map with lat/lon keys. Returns a list [lon, lat] as expected by ORS.
      */
     private List<Double> parseCoord(Object input) {
-        if (input == null)
+        if (input == null) {
             return null;
+        }
         try {
             if (input instanceof List<?> lst && lst.size() >= 2) {
                 double a = toDouble(lst.get(0));

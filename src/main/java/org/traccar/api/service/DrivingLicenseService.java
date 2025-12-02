@@ -42,18 +42,21 @@ public class DrivingLicenseService {
     private ValidationLogService validationLogService;
 
     private boolean isValid(DrivingLicenseRecord dl) {
-        if (dl == null)
+        if (dl == null) {
             return false;
+        }
         Date now = new Date();
         Date overall = dl.getOverallExpiryDate();
         if (overall != null) {
             return overall.after(now);
         }
         // fallback: if either non/transport present and after now
-        if (dl.getNonTransportValidTo() != null && dl.getNonTransportValidTo().after(now))
+        if (dl.getNonTransportValidTo() != null && dl.getNonTransportValidTo().after(now)) {
             return true;
-        if (dl.getTransportValidTo() != null && dl.getTransportValidTo().after(now))
+        }
+        if (dl.getTransportValidTo() != null && dl.getTransportValidTo().after(now)) {
             return true;
+        }
         return false;
     }
 
@@ -195,7 +198,7 @@ public class DrivingLicenseService {
             // Store only inner 'response' JSON without request_id
             JSONObject sanitized = new JSONObject(resp.toString());
             sanitized.remove("request_id");
-            dl.setRawResponse(sanitized.toString()); // TODO: revisit storage size impact
+            dl.setRawResponse(sanitized.toString());
             dl.setUpdatedAt(new Date());
             return dl;
         } catch (Exception e) {
@@ -218,8 +221,9 @@ public class DrivingLicenseService {
         dl.setTransportExpiryStatus(trStatus);
 
         Date overall = null;
-        if (dl.getNonTransportValidTo() != null)
+        if (dl.getNonTransportValidTo() != null) {
             overall = dl.getNonTransportValidTo();
+        }
         if (dl.getTransportValidTo() != null) {
             if (overall == null || dl.getTransportValidTo().after(overall)) {
                 overall = dl.getTransportValidTo();
@@ -238,8 +242,9 @@ public class DrivingLicenseService {
     }
 
     private Date parseDate(String ddMMyyyy) {
-        if (ddMMyyyy == null || ddMMyyyy.isBlank())
+        if (ddMMyyyy == null || ddMMyyyy.isBlank()) {
             return null;
+        }
         try {
             return DL_DATE.parse(ddMMyyyy);
         } catch (ParseException e) {

@@ -76,12 +76,13 @@ public class VehicleValidationResource extends BaseResource {
                         // CRITICAL PERMISSION CHECK:
                         // User must have vehicleValidationAccess permission to use this API
                         if (!user.getVehicleValidationAccess()) {
-                                LOGGER.warn("User {} attempted to access vehicle validation without permission",
-                                                userId);
+                                LOGGER.warn(
+                                        "User {} attempted to access vehicle validation without permission",
+                                        userId);
                                 return Response.status(Response.Status.FORBIDDEN)
                                                 .entity(Map.of("error", "forbidden",
-                                                                "message",
-                                                                "You do not have permission to access vehicle validation"))
+                                                "message",
+                                                "You do not have permission to access vehicle validation"))
                                                 .build();
                         }
 

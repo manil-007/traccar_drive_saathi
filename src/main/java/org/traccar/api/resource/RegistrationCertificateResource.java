@@ -53,8 +53,9 @@ public class RegistrationCertificateResource {
                 for (var e : params.entrySet()) {
                     String k = e.getKey();
                     String[] vals = e.getValue();
-                    if (vals != null && vals.length > 0)
+                    if (vals != null && vals.length > 0) {
                         map.put(k, vals[0]);
+                    }
                 }
                 body = map.toString();
             } else {
