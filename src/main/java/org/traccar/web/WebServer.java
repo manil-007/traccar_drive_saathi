@@ -164,9 +164,9 @@ public class WebServer implements LifecycleObject {
         servletHandler.addFilter(filterHolder, "/*", EnumSet.of(DispatcherType.REQUEST));
 
         if (config.getBoolean(Keys.WEB_DEBUG)) {
-            servletHandler.setWelcomeFiles(new String[] { "debug.html", "index.html" });
+            servletHandler.setWelcomeFiles(new String[] {"debug.html", "index.html"});
         } else {
-            servletHandler.setWelcomeFiles(new String[] { "release.html", "index.html" });
+            servletHandler.setWelcomeFiles(new String[] {"release.html", "index.html"});
         }
     }
 
@@ -218,7 +218,7 @@ public class WebServer implements LifecycleObject {
             sessionCookieConfig.setMaxAge(sessionTimeout);
         }
         // sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
-        // TODO: revisit
+        // FIXME: revisit
         String sameSiteCookie = config.getString(Keys.WEB_SAME_SITE_COOKIE);
         if (sameSiteCookie != null) {
             switch (sameSiteCookie.toLowerCase()) {

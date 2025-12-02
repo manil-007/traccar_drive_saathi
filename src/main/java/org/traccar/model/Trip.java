@@ -15,16 +15,19 @@
  */
 package org.traccar.model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.traccar.storage.QueryIgnore;
 import org.traccar.storage.StorageName;
 
 import java.util.Date;
 
+@Schema(description = "Trip/Shipment record with device tracking and delivery information")
 @StorageName("tc_trips")
 public class Trip extends ExtendedModel {
 
     private String name;
 
+    @Schema(description = "Trip name/identifier", example = "Mumbai Delivery #123")
     public String getName() {
         return name;
     }
@@ -36,6 +39,8 @@ public class Trip extends ExtendedModel {
     // Asset/Device Information
     private long deviceId;
 
+    @Schema(description = "[REQUIRED] Device/vehicle ID for tracking. Alternative: use deviceUniqueId",
+            requiredMode = Schema.RequiredMode.REQUIRED, example = "1234")
     public long getDeviceId() {
         return deviceId;
     }
@@ -108,6 +113,8 @@ public class Trip extends ExtendedModel {
     // Consignor/Consignee Information
     private long consignorId;
 
+    @Schema(description = "[REQUIRED] Consignor/Shipper user ID. If user not found, provide otherConsignorName",
+            requiredMode = Schema.RequiredMode.REQUIRED, example = "10")
     public long getConsignorId() {
         return consignorId;
     }
@@ -118,6 +125,8 @@ public class Trip extends ExtendedModel {
 
     private String consignorName;
 
+    @Schema(description = "Consignor name (auto-filled from user record)",
+            accessMode = Schema.AccessMode.READ_ONLY)
     public String getConsignorName() {
         return consignorName;
     }
@@ -128,6 +137,8 @@ public class Trip extends ExtendedModel {
 
     private String otherConsignorName;
 
+    @Schema(description = "Custom consignor name if consignorId doesn't match a user",
+            example = "External Shipper Inc")
     public String getOtherConsignorName() {
         return otherConsignorName;
     }
@@ -138,6 +149,8 @@ public class Trip extends ExtendedModel {
 
     private long consigneeId;
 
+    @Schema(description = "[REQUIRED] Consignee/Receiver user ID. If user not found, provide otherConsigneeName",
+            requiredMode = Schema.RequiredMode.REQUIRED, example = "20")
     public long getConsigneeId() {
         return consigneeId;
     }
@@ -179,6 +192,8 @@ public class Trip extends ExtendedModel {
     // Origin and Destination
     private double originLatitude;
 
+    @Schema(description = "[REQUIRED] Starting point latitude (-90 to 90, cannot be exactly 0,0)",
+            requiredMode = Schema.RequiredMode.REQUIRED, example = "28.6139", minimum = "-90", maximum = "90")
     public double getOriginLatitude() {
         return originLatitude;
     }
@@ -189,6 +204,8 @@ public class Trip extends ExtendedModel {
 
     private double originLongitude;
 
+    @Schema(description = "[REQUIRED] Starting point longitude (-180 to 180, cannot be exactly 0,0)",
+            requiredMode = Schema.RequiredMode.REQUIRED, example = "77.2090", minimum = "-180", maximum = "180")
     public double getOriginLongitude() {
         return originLongitude;
     }
@@ -199,6 +216,7 @@ public class Trip extends ExtendedModel {
 
     private String originAddress;
 
+    @Schema(description = "Origin address text", example = "Connaught Place, New Delhi")
     public String getOriginAddress() {
         return originAddress;
     }
@@ -209,6 +227,8 @@ public class Trip extends ExtendedModel {
 
     private double destinationLatitude;
 
+    @Schema(description = "[REQUIRED] Destination latitude (-90 to 90, cannot be exactly 0,0)",
+            requiredMode = Schema.RequiredMode.REQUIRED, example = "19.0760", minimum = "-90", maximum = "90")
     public double getDestinationLatitude() {
         return destinationLatitude;
     }
@@ -219,6 +239,8 @@ public class Trip extends ExtendedModel {
 
     private double destinationLongitude;
 
+    @Schema(description = "[REQUIRED] Destination longitude (-180 to 180, cannot be exactly 0,0)",
+            requiredMode = Schema.RequiredMode.REQUIRED, example = "72.8777", minimum = "-180", maximum = "180")
     public double getDestinationLongitude() {
         return destinationLongitude;
     }
@@ -240,6 +262,8 @@ public class Trip extends ExtendedModel {
     // Date and Time Information
     private Date departureDate;
 
+    @Schema(description = "Trip departure/start date. Defaults to current time if not provided",
+            example = "2025-12-02T10:00:00Z")
     public Date getDepartureDate() {
         return departureDate;
     }
@@ -250,6 +274,8 @@ public class Trip extends ExtendedModel {
 
     private Date etaDate;
 
+    @Schema(description = "[REQUIRED] Expected Time of Arrival. Must be in the future for new trips",
+            requiredMode = Schema.RequiredMode.REQUIRED, example = "2025-12-03T18:00:00Z")
     public Date getEtaDate() {
         return etaDate;
     }
@@ -260,6 +286,7 @@ public class Trip extends ExtendedModel {
 
     private Date bookingDate;
 
+    @Schema(description = "Booking/order date", example = "2025-12-01T08:00:00Z")
     public Date getBookingDate() {
         return bookingDate;
     }
@@ -470,6 +497,8 @@ public class Trip extends ExtendedModel {
     // dynamically from device position)
     private transient double currentLatitude;
 
+    @Schema(description = "Current device latitude (read-only, enriched from device position)",
+            accessMode = Schema.AccessMode.READ_ONLY, example = "28.7041")
     @QueryIgnore
     public double getCurrentLatitude() {
         return currentLatitude;
@@ -481,6 +510,8 @@ public class Trip extends ExtendedModel {
 
     private transient double currentLongitude;
 
+    @Schema(description = "Current device longitude (read-only, enriched from device position)",
+            accessMode = Schema.AccessMode.READ_ONLY, example = "77.1025")
     @QueryIgnore
     public double getCurrentLongitude() {
         return currentLongitude;
@@ -492,6 +523,8 @@ public class Trip extends ExtendedModel {
 
     private transient double currentSpeed;
 
+    @Schema(description = "Current device speed in knots (read-only, enriched from device position)",
+            accessMode = Schema.AccessMode.READ_ONLY, example = "45.5")
     @QueryIgnore
     public double getCurrentSpeed() {
         return currentSpeed;
@@ -503,6 +536,8 @@ public class Trip extends ExtendedModel {
 
     private transient Date lastPositionUpdate;
 
+    @Schema(description = "Timestamp of last position update (read-only)",
+            accessMode = Schema.AccessMode.READ_ONLY)
     @QueryIgnore
     public Date getLastPositionUpdate() {
         return lastPositionUpdate;
@@ -515,6 +550,7 @@ public class Trip extends ExtendedModel {
     // Reference position (first position at trip start)
     private long referencePositionId;
 
+    @Schema(description = "Reference position ID for distance tracking", example = "5001")
     public long getReferencePositionId() {
         return referencePositionId;
     }
@@ -526,6 +562,8 @@ public class Trip extends ExtendedModel {
     // Distance Tracking
     private double totalDistance;
 
+    @Schema(description = "Total trip distance in km (auto-calculated using Haversine formula)",
+            accessMode = Schema.AccessMode.READ_ONLY, example = "1150.5")
     public double getTotalDistance() {
         return totalDistance;
     }
@@ -536,6 +574,8 @@ public class Trip extends ExtendedModel {
 
     private transient double distanceCovered;
 
+    @Schema(description = "Distance covered from origin to current position in km (read-only)",
+            accessMode = Schema.AccessMode.READ_ONLY, example = "450.2")
     @QueryIgnore
     public double getDistanceCovered() {
         return distanceCovered;
@@ -567,14 +607,76 @@ public class Trip extends ExtendedModel {
     }
 
     // Status Information
-    private String runningStatus;
+    private String tripStatus;
 
-    public String getRunningStatus() {
-        return runningStatus;
+    @Schema(description = "Trip status: pending, running, completed, cancelled",
+            example = "running", allowableValues = {"pending", "running", "completed", "cancelled"})
+    public String getTripStatus() {
+        return tripStatus;
     }
 
-    public void setRunningStatus(String runningStatus) {
-        this.runningStatus = runningStatus;
+    public void setTripStatus(String tripStatus) {
+        this.tripStatus = tripStatus;
+    }
+
+    private Date completionDate;
+
+    @Schema(description = "Actual trip completion date (set when trip is completed)",
+            accessMode = Schema.AccessMode.READ_ONLY)
+    public Date getCompletionDate() {
+        return completionDate;
+    }
+
+    public void setCompletionDate(Date completionDate) {
+        this.completionDate = completionDate;
+    }
+
+    private Double completionLatitude;
+
+    @Schema(description = "Final latitude when trip was completed",
+            accessMode = Schema.AccessMode.READ_ONLY)
+    public Double getCompletionLatitude() {
+        return completionLatitude;
+    }
+
+    public void setCompletionLatitude(Double completionLatitude) {
+        this.completionLatitude = completionLatitude;
+    }
+
+    private Double completionLongitude;
+
+    @Schema(description = "Final longitude when trip was completed",
+            accessMode = Schema.AccessMode.READ_ONLY)
+    public Double getCompletionLongitude() {
+        return completionLongitude;
+    }
+
+    public void setCompletionLongitude(Double completionLongitude) {
+        this.completionLongitude = completionLongitude;
+    }
+
+    private String completionNotes;
+
+    @Schema(description = "Notes or remarks added when completing the trip",
+            example = "Delivered successfully, signed by receiver")
+    public String getCompletionNotes() {
+        return completionNotes;
+    }
+
+    public void setCompletionNotes(String completionNotes) {
+        this.completionNotes = completionNotes;
+    }
+
+    private Long totalTripTimeMinutes;
+
+    @Schema(description = "Total trip duration in minutes (from departure to completion)",
+            accessMode = Schema.AccessMode.READ_ONLY, example = "1440")
+    public Long getTotalTripTimeMinutes() {
+        return totalTripTimeMinutes;
+    }
+
+    public void setTotalTripTimeMinutes(Long totalTripTimeMinutes) {
+        this.totalTripTimeMinutes = totalTripTimeMinutes;
     }
 
     private String dataDelay;

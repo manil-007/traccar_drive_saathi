@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+        logicalFilePath="changelog-6.18.0">
+
+  <changeSet author="author" id="changelog-6.18.0-1">
+
+    <!-- Add trip completion tracking fields to tc_trips table -->
+    <addColumn tableName="tc_trips">
+      <column name="tripstatus" type="VARCHAR(50)" defaultValue="pending">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+
+    <addColumn tableName="tc_trips">
+      <column name="completiondate" type="TIMESTAMP">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+
+    <addColumn tableName="tc_trips">
+      <column name="completionlatitude" type="DOUBLE">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+
+    <addColumn tableName="tc_trips">
+      <column name="completionlongitude" type="DOUBLE">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+
+    <addColumn tableName="tc_trips">
+      <column name="completionnotes" type="VARCHAR(1000)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+
+    <addColumn tableName="tc_trips">
+      <column name="totaltriptimeminutes" type="BIGINT">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+
+    <!-- Create index on tripstatus for faster filtering -->
+    <createIndex tableName="tc_trips" indexName="idx_trips_tripstatus">
+      <column name="tripstatus"/>
+    </createIndex>
+
+    <!-- Create index on completiondate for reporting -->
+    <createIndex tableName="tc_trips" indexName="idx_trips_completiondate">
+      <column name="completiondate"/>
+    </createIndex>
+
+    <!-- Drop old runningStatus column - replaced by tripStatus -->
+    <dropColumn tableName="tc_trips" columnName="runningstatus"/>
+
+  </changeSet>
+
+</databaseChangeLog>
