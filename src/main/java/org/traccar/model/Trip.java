@@ -621,6 +621,7 @@ public class Trip extends ExtendedModel {
 
     private Date completionDate;
 
+    @QueryIgnore
     @Schema(description = "Actual trip completion date (set when trip is completed)",
             accessMode = Schema.AccessMode.READ_ONLY)
     public Date getCompletionDate() {
@@ -633,6 +634,7 @@ public class Trip extends ExtendedModel {
 
     private Double completionLatitude;
 
+    @QueryIgnore
     @Schema(description = "Final latitude when trip was completed",
             accessMode = Schema.AccessMode.READ_ONLY)
     public Double getCompletionLatitude() {
@@ -645,6 +647,7 @@ public class Trip extends ExtendedModel {
 
     private Double completionLongitude;
 
+    @QueryIgnore
     @Schema(description = "Final longitude when trip was completed",
             accessMode = Schema.AccessMode.READ_ONLY)
     public Double getCompletionLongitude() {
@@ -657,6 +660,7 @@ public class Trip extends ExtendedModel {
 
     private String completionNotes;
 
+    @QueryIgnore
     @Schema(description = "Notes or remarks added when completing the trip",
             example = "Delivered successfully, signed by receiver")
     public String getCompletionNotes() {
@@ -669,6 +673,7 @@ public class Trip extends ExtendedModel {
 
     private Long totalTripTimeMinutes;
 
+    @QueryIgnore
     @Schema(description = "Total trip duration in minutes (from departure to completion)",
             accessMode = Schema.AccessMode.READ_ONLY, example = "1440")
     public Long getTotalTripTimeMinutes() {

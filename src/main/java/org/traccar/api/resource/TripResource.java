@@ -48,8 +48,10 @@ import org.traccar.storage.query.Condition;
 import org.traccar.storage.query.Order;
 import org.traccar.storage.query.Request;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -915,9 +917,28 @@ public class TripResource extends ExtendedObjectResource<Trip> {
         trip.setTripStatus("completed");
         trip.setUpdatedAt(completionDate);
 
-        // Save to database
+        // Save to database - explicitly include completion fields since they have @QueryIgnore
+        // Only include fields that have values to avoid null constraint issues
+        List<String> columnsToUpdate = new ArrayList<>();
+        columnsToUpdate.add("tripStatus");
+        columnsToUpdate.add("completionDate");
+        columnsToUpdate.add("updatedAt");
+
+        if (trip.getCompletionLatitude() != null) {
+            columnsToUpdate.add("completionLatitude");
+        }
+        if (trip.getCompletionLongitude() != null) {
+            columnsToUpdate.add("completionLongitude");
+        }
+        if (trip.getCompletionNotes() != null && !trip.getCompletionNotes().trim().isEmpty()) {
+            columnsToUpdate.add("completionNotes");
+        }
+        if (trip.getTotalTripTimeMinutes() != null) {
+            columnsToUpdate.add("totalTripTimeMinutes");
+        }
+
         storage.updateObject(trip, new Request(
-                new Columns.Exclude("id"),
+                new Columns.Include(columnsToUpdate.toArray(new String[0])),
                 new Condition.Equals("id", id)));
 
         LOGGER.info("Trip {} completed by user {} at {}", id, getUserId(), completionDate);
