@@ -2087,6 +2087,126 @@ paths:
         "204":
           description: No Content
           content: {}
+  /trips/byDeviceUniqueId:
+    get:
+      summary: Get trips by device unique ID (IMEI)
+      description: Query trips using device IMEI/unique ID instead of internal database ID. Useful when you don't know the deviceId.
+      tags:
+        - Trips
+      parameters:
+        - name: deviceUniqueId
+          in: query
+          required: true
+          description: Device IMEI/unique ID (REQUIRED)
+          schema:
+            type: string
+        - name: all
+          in: query
+          description: Return all trips (admin only)
+          schema:
+            type: boolean
+        - name: userId
+          in: query
+          description: Filter by user ID
+          schema:
+            type: integer
+        - name: groupId
+          in: query
+          description: Filter by group ID
+          schema:
+            type: integer
+        - name: excludeAttributes
+          in: query
+          description: Exclude attributes field
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of trips for the device
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trip"
+  /trips/withPosition:
+    get:
+      summary: Get trips WITH real-time position data (⚠️ SLOWER)
+      description: "⚠️ PERFORMANCE WARNING: Adds database queries per trip. Returns currentLatitude, currentLongitude, currentSpeed, distanceCovered. Use for real-time dashboards only, not bulk operations."
+      tags:
+        - Trips
+      parameters:
+        - name: all
+          in: query
+          description: Return all trips (admin only)
+          schema:
+            type: boolean
+        - name: userId
+          in: query
+          description: Filter by user ID
+          schema:
+            type: integer
+        - name: groupId
+          in: query
+          description: Filter by group ID
+          schema:
+            type: integer
+        - name: deviceId
+          in: query
+          description: Filter by device ID
+          schema:
+            type: integer
+        - name: excludeAttributes
+          in: query
+          description: Exclude attributes field
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of trips enriched with real-time position data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trip"
+  /trips/{id}/complete:
+    post:
+      summary: Complete a trip
+      description: "Mark trip as completed. Sets tripStatus='completed', records completion timestamp and final position, calculates total trip time. User must have device permission. For completed trips, GET endpoints return null for transient position fields."
+      tags:
+        - Trips
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Trip ID to complete
+          schema:
+            type: integer
+            format: int64
+        - name: notes
+          in: query
+          required: false
+          description: Optional completion notes/remarks (max 1000 characters)
+          schema:
+            type: string
+            maxLength: 1000
+      responses:
+        "200":
+          description: Trip completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "400":
+          description: Trip already completed or cancelled
+          content: {}
+        "403":
+          description: No permission to complete this trip
+          content: {}
+        "404":
+          description: Trip not found
+          content: {}
   /vehicleData:
     post:
       summary: Fetch Vehicle Data
@@ -2880,7 +3000,6 @@ components:
     Trip:
       type: object
       required:
-        - name
         - deviceId
         - originLatitude
         - originLongitude
@@ -3085,9 +3204,38 @@ components:
         waypoint2:
           type: string
           description: Second waypoint (optional)
-        runningStatus:
+        tripStatus:
           type: string
-          description: Running status of the trip (auto-set to 'pending' initially)
+          enum:
+            - pending
+            - running
+            - completed
+            - cancelled
+          description: "Trip status: pending (not started), running (in progress), completed (finished), cancelled"
+          readOnly: true
+        completionDate:
+          type: string
+          format: date-time
+          description: Actual trip completion timestamp (set when trip is marked as completed)
+          readOnly: true
+        completionLatitude:
+          type: number
+          format: double
+          description: Final device latitude when trip was completed
+          readOnly: true
+        completionLongitude:
+          type: number
+          format: double
+          description: Final device longitude when trip was completed
+          readOnly: true
+        completionNotes:
+          type: string
+          maxLength: 1000
+          description: Notes or remarks added when completing the trip (optional)
+        totalTripTimeMinutes:
+          type: integer
+          format: int64
+          description: Total trip duration in minutes (from departure to completion)
           readOnly: true
         dataDelay:
           type: string
